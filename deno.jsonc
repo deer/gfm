@@ -1,6 +1,7 @@
 {
   "name": "@deer/gfm",
-  "version": "0.1.0",
+  "version": "0.0.1",
+  "license": "MIT",
   "exports": {
     ".": "./mod.ts",
     "./style": "./style.ts"
@@ -35,7 +36,19 @@
     "@astral/astral": "jsr:@astral/astral@^0.5.5"
   },
   "compilerOptions": {
-    "lib": ["dom", "dom.iterable", "dom.asynciterable", "deno.ns"]
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "dom.asynciterable",
+      "deno.ns"
+    ]
+  },
+  "publish": {
+    "exclude": [
+      "test/",
+      "mod_test.ts",
+      "bench.ts"
+    ]
   },
   "tasks": {
     "ok": "deno fmt --check && deno lint && deno check && deno task test",
