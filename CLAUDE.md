@@ -14,6 +14,6 @@ For detailed architecture, see [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md).
 ## Key Commands
 
 - `deno task test` — Run all tests (requires `-A` permissions)
-- `deno task check` — Type-check `mod.ts`
+- `deno task ok` — Run all safety checks
 - `deno bench --allow-read --allow-env` — Run benchmarks
 - `deno task serve` — Start dev server on port 8000

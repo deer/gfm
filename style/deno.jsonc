@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "sass": "npm:sass@^1.97.3",
+    "@primer/css": "npm:@primer/css@^21.5.1",
+    "@primer/primitives": "npm:@primer/primitives@^9.1.2"
+  }
+}
