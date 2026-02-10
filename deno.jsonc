@@ -6,6 +6,7 @@
     ".": "./mod.ts",
     "./style": "./style.ts"
   },
+  "workspace": ["./style"],
   "nodeModulesDir": "auto",
   "imports": {
     "unified": "npm:unified@^11.0.5",
@@ -46,6 +47,7 @@
   "publish": {
     "exclude": [
       "test/",
+      "style/",
       "mod_test.ts",
       "bench.ts"
     ]
@@ -54,6 +56,7 @@
     "ok": "deno fmt --check && deno lint && deno check && deno task test",
     "test": "deno test -A",
     "bench": "deno bench -A",
+    "gen:style": "deno run -A style/build.ts",
     "serve": "deno run -A test/server.ts"
   }
 }
