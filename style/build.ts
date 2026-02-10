@@ -142,6 +142,99 @@ const HIGHLIGHT_JS_CSS =
   `.hljs-addition{color:var(--color-prettylights-syntax-markup-inserted-text);background-color:var(--color-prettylights-syntax-markup-inserted-bg)}` +
   `.hljs-deletion{color:var(--color-prettylights-syntax-markup-deleted-text);background-color:var(--color-prettylights-syntax-markup-deleted-bg)}`;
 
+// GFM theming layer: public --gfm-* custom properties
+// Light-mode defaults (on :root)
+const GFM_THEME_VARS_LIGHT = `--gfm-fg-default:#1f2328;` +
+  `--gfm-fg-heading:#1f2328;` +
+  `--gfm-fg-muted:#59636e;` +
+  `--gfm-accent-color:#0969da;` +
+  `--gfm-accent-hover:#0550ae;` +
+  `--gfm-border-color:#d1d9e0;` +
+  `--gfm-bg-subtle:#f6f8fa;` +
+  `--gfm-bg-surface:#f6f8fa;` +
+  `--gfm-inline-code-color:inherit;` +
+  `--gfm-inline-code-bg:#818b981f;`;
+
+// Dark-mode overrides
+const GFM_THEME_VARS_DARK = `--gfm-fg-default:#f0f6fc;` +
+  `--gfm-fg-heading:#f0f6fc;` +
+  `--gfm-fg-muted:#9198a1;` +
+  `--gfm-accent-color:#1f6feb;` +
+  `--gfm-accent-hover:#58a6ff;` +
+  `--gfm-border-color:#3d444d;` +
+  `--gfm-bg-subtle:#151b23;` +
+  `--gfm-bg-surface:#151b23;` +
+  `--gfm-inline-code-color:inherit;` +
+  `--gfm-inline-code-bg:#656c7633;`;
+
+// Remap Primer internal vars to --gfm-* on .markdown-body
+const GFM_REMAP_CSS = `.markdown-body{` +
+  `--fgColor-default:var(--gfm-fg-default);` +
+  `--fgColor-muted:var(--gfm-fg-muted);` +
+  `--borderColor-accent-emphasis:var(--gfm-accent-color);` +
+  `--borderColor-default:var(--gfm-border-color);` +
+  `--bgColor-muted:var(--gfm-bg-subtle);` +
+  `--bgColor-neutral-muted:var(--gfm-inline-code-bg);` +
+  `}`;
+
+// Component-level overrides using --gfm-* variables
+const GFM_COMPONENT_CSS =
+  // Headings
+  `.markdown-body h1,.markdown-body h2,.markdown-body h3,` +
+  `.markdown-body h4,.markdown-body h5,.markdown-body h6` +
+  `{color:var(--gfm-fg-heading)}` +
+  // Links
+  `.markdown-body a{color:var(--gfm-accent-color)}` +
+  `.markdown-body a:hover{color:var(--gfm-accent-hover)}` +
+  // Images
+  `.markdown-body img{border-radius:6px}` +
+  // Code header
+  `.markdown-body .code-header{display:flex;align-items:center;` +
+  `background:var(--gfm-bg-surface);border:1px solid var(--gfm-border-color);` +
+  `border-radius:6px 6px 0 0;padding:4px 12px;font-size:0.85em;` +
+  `color:var(--gfm-fg-muted)}` +
+  `.markdown-body .code-header+pre{border-top-left-radius:0;border-top-right-radius:0;` +
+  `margin-top:0;border-top:0}` +
+  // GitHub alerts — base
+  `.markdown-body .markdown-alert{padding:8px 16px;margin-bottom:16px;` +
+  `border-left:4px solid var(--gfm-border-color);border-radius:0 6px 6px 0}` +
+  `.markdown-body .markdown-alert .markdown-alert-title{display:flex;` +
+  `align-items:center;gap:8px;font-weight:600;margin-bottom:4px}` +
+  // Alert types — light
+  `.markdown-body .markdown-alert-note{border-left-color:#0969da}` +
+  `.markdown-body .markdown-alert-note .markdown-alert-title{color:#0969da}` +
+  `.markdown-body .markdown-alert-tip{border-left-color:#1a7f37}` +
+  `.markdown-body .markdown-alert-tip .markdown-alert-title{color:#1a7f37}` +
+  `.markdown-body .markdown-alert-important{border-left-color:#8250df}` +
+  `.markdown-body .markdown-alert-important .markdown-alert-title{color:#8250df}` +
+  `.markdown-body .markdown-alert-warning{border-left-color:#9a6700}` +
+  `.markdown-body .markdown-alert-warning .markdown-alert-title{color:#9a6700}` +
+  `.markdown-body .markdown-alert-caution{border-left-color:#cf222e}` +
+  `.markdown-body .markdown-alert-caution .markdown-alert-title{color:#cf222e}` +
+  // Alert types — dark overrides
+  `@media(prefers-color-scheme:dark){` +
+  `.markdown-body .markdown-alert-note{border-left-color:#1f6feb}` +
+  `.markdown-body .markdown-alert-note .markdown-alert-title{color:#1f6feb}` +
+  `.markdown-body .markdown-alert-tip{border-left-color:#238636}` +
+  `.markdown-body .markdown-alert-tip .markdown-alert-title{color:#238636}` +
+  `.markdown-body .markdown-alert-important{border-left-color:#a371f7}` +
+  `.markdown-body .markdown-alert-important .markdown-alert-title{color:#a371f7}` +
+  `.markdown-body .markdown-alert-warning{border-left-color:#d29922}` +
+  `.markdown-body .markdown-alert-warning .markdown-alert-title{color:#d29922}` +
+  `.markdown-body .markdown-alert-caution{border-left-color:#f85149}` +
+  `.markdown-body .markdown-alert-caution .markdown-alert-title{color:#f85149}` +
+  `}` +
+  `.dark .markdown-body .markdown-alert-note{border-left-color:#1f6feb}` +
+  `.dark .markdown-body .markdown-alert-note .markdown-alert-title{color:#1f6feb}` +
+  `.dark .markdown-body .markdown-alert-tip{border-left-color:#238636}` +
+  `.dark .markdown-body .markdown-alert-tip .markdown-alert-title{color:#238636}` +
+  `.dark .markdown-body .markdown-alert-important{border-left-color:#a371f7}` +
+  `.dark .markdown-body .markdown-alert-important .markdown-alert-title{color:#a371f7}` +
+  `.dark .markdown-body .markdown-alert-warning{border-left-color:#d29922}` +
+  `.dark .markdown-body .markdown-alert-warning .markdown-alert-title{color:#d29922}` +
+  `.dark .markdown-body .markdown-alert-caution{border-left-color:#f85149}` +
+  `.dark .markdown-body .markdown-alert-caution .markdown-alert-title{color:#f85149}`;
+
 // ---------------------------------------------------------------------------
 // Main build
 // ---------------------------------------------------------------------------
@@ -214,13 +307,28 @@ export async function build(): Promise<void> {
     `[data-color-mode="light"][data-light-theme="dark"],[data-color-mode="dark"][data-dark-theme="dark"],.dark{${darkDecls}}` +
     `@media(prefers-color-scheme:dark){:root{${darkDecls}}}`;
 
+  // GFM public theming layer (--gfm-* custom properties)
+  const gfmThemeCss = `/* GFM theme variables */\n` +
+    `:root,[data-color-mode="light"][data-light-theme="light"],[data-color-mode="dark"][data-dark-theme="light"]{${GFM_THEME_VARS_LIGHT}}` +
+    `[data-color-mode="light"][data-light-theme="dark"],[data-color-mode="dark"][data-dark-theme="dark"],.dark{${GFM_THEME_VARS_DARK}}` +
+    `@media(prefers-color-scheme:dark){:root{${GFM_THEME_VARS_DARK}}}`;
+
+  // Remap Primer vars → --gfm-* on .markdown-body
+  const gfmRemapCss = `/* GFM theme remapping */\n` + GFM_REMAP_CSS;
+
   // Clean the markdown CSS (remove sourceMappingURL comment)
   const cleanMarkdownCss = markdownCss
     .replace(/\/\*#\s*sourceMappingURL=.*?\*\//, "")
     .trim();
 
-  const fullCss = variablesCss + "\n" + cleanMarkdownCss + "\n" +
-    `/* Starry-night syntax highlighting (pl- prefix) */\n` + STARRY_NIGHT_CSS;
+  // Component overrides (headings, links, alerts, etc.)
+  const gfmComponentCss = `/* GFM component styles */\n` + GFM_COMPONENT_CSS;
+
+  // Assembly order: variables → theme → remap → markdown → starry-night → components
+  const fullCss = variablesCss + "\n" + gfmThemeCss + "\n" + gfmRemapCss +
+    "\n" + cleanMarkdownCss + "\n" +
+    `/* Starry-night syntax highlighting (pl- prefix) */\n` + STARRY_NIGHT_CSS +
+    "\n" + gfmComponentCss;
 
   // --- 5. Fetch and process KaTeX CSS ---
 

@@ -176,6 +176,104 @@ describe("generated CSS export", () => {
   });
 });
 
+describe("GFM theme variables", () => {
+  it("contains light mode --gfm-* variables", () => {
+    assertStringIncludes(CSS, "--gfm-fg-default:#1f2328");
+    assertStringIncludes(CSS, "--gfm-fg-heading:#1f2328");
+    assertStringIncludes(CSS, "--gfm-fg-muted:#59636e");
+    assertStringIncludes(CSS, "--gfm-accent-color:#0969da");
+    assertStringIncludes(CSS, "--gfm-accent-hover:#0550ae");
+    assertStringIncludes(CSS, "--gfm-border-color:#d1d9e0");
+    assertStringIncludes(CSS, "--gfm-bg-subtle:#f6f8fa");
+    assertStringIncludes(CSS, "--gfm-bg-surface:#f6f8fa");
+    assertStringIncludes(CSS, "--gfm-inline-code-bg:#818b981f");
+  });
+
+  it("contains dark mode --gfm-* variables", () => {
+    assertStringIncludes(CSS, "--gfm-fg-default:#f0f6fc");
+    assertStringIncludes(CSS, "--gfm-fg-heading:#f0f6fc");
+    assertStringIncludes(CSS, "--gfm-fg-muted:#9198a1");
+    assertStringIncludes(CSS, "--gfm-accent-color:#1f6feb");
+    assertStringIncludes(CSS, "--gfm-accent-hover:#58a6ff");
+    assertStringIncludes(CSS, "--gfm-border-color:#3d444d");
+    assertStringIncludes(CSS, "--gfm-bg-subtle:#151b23");
+    assertStringIncludes(CSS, "--gfm-bg-surface:#151b23");
+    assertStringIncludes(CSS, "--gfm-inline-code-bg:#656c7633");
+  });
+
+  it("contains Primer var remapping on .markdown-body", () => {
+    assertStringIncludes(CSS, "--fgColor-default:var(--gfm-fg-default)");
+    assertStringIncludes(CSS, "--fgColor-muted:var(--gfm-fg-muted)");
+    assertStringIncludes(
+      CSS,
+      "--borderColor-accent-emphasis:var(--gfm-accent-color)",
+    );
+    assertStringIncludes(
+      CSS,
+      "--borderColor-default:var(--gfm-border-color)",
+    );
+    assertStringIncludes(CSS, "--bgColor-muted:var(--gfm-bg-subtle)");
+    assertStringIncludes(
+      CSS,
+      "--bgColor-neutral-muted:var(--gfm-inline-code-bg)",
+    );
+  });
+});
+
+describe("GFM alert styles", () => {
+  it("contains base alert styles", () => {
+    assertStringIncludes(CSS, ".markdown-body .markdown-alert{");
+    assertStringIncludes(
+      CSS,
+      ".markdown-body .markdown-alert .markdown-alert-title{",
+    );
+  });
+
+  it("contains all 5 alert types", () => {
+    assertStringIncludes(CSS, ".markdown-alert-note{");
+    assertStringIncludes(CSS, ".markdown-alert-tip{");
+    assertStringIncludes(CSS, ".markdown-alert-important{");
+    assertStringIncludes(CSS, ".markdown-alert-warning{");
+    assertStringIncludes(CSS, ".markdown-alert-caution{");
+  });
+});
+
+describe("GFM code header styles", () => {
+  it("contains code-header referencing --gfm-* variables", () => {
+    assertStringIncludes(CSS, ".markdown-body .code-header{");
+    assertStringIncludes(CSS, "var(--gfm-bg-surface)");
+    assertStringIncludes(CSS, "var(--gfm-border-color)");
+    assertStringIncludes(CSS, "var(--gfm-fg-muted)");
+  });
+
+  it("contains code-header + pre style", () => {
+    assertStringIncludes(CSS, ".markdown-body .code-header+pre{");
+  });
+});
+
+describe("GFM heading and link overrides", () => {
+  it("contains heading color override", () => {
+    assertStringIncludes(CSS, "color:var(--gfm-fg-heading)");
+  });
+
+  it("contains link color override", () => {
+    assertStringIncludes(CSS, ".markdown-body a{color:var(--gfm-accent-color)");
+  });
+
+  it("contains link hover override", () => {
+    assertStringIncludes(
+      CSS,
+      ".markdown-body a:hover{color:var(--gfm-accent-hover)",
+    );
+  });
+});
+
+describe("GFM image enhancement", () => {
+  it("contains image border-radius", () => {
+    assertStringIncludes(CSS, ".markdown-body img{border-radius:6px}");
+  });
+});
+
 describe("generated HIGHLIGHT_CSS export", () => {
   it("contains hljs base styles", () => {
     assertStringIncludes(HIGHLIGHT_CSS, ".hljs{");
