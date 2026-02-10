@@ -41,7 +41,7 @@ import rehypeHighlight from "rehype-highlight";
 import rehypeKatex from "rehype-katex";
 import { toString as hastToString } from "hast-util-to-string";
 import { headingRank } from "hast-util-heading-rank";
-import { visit } from "unist-util-visit";
+import { SKIP, visit } from "unist-util-visit";
 import { toString as mdastToString } from "mdast-util-to-string";
 import { parse as parseYaml } from "yaml";
 import GitHubSlugger from "github-slugger";
@@ -135,7 +135,7 @@ function buildSchema(opts: RenderOptions) {
   ]];
 
   // Build span className pattern - syntax highlighting + optionally KaTeX
-  const spanClassPatterns = ["pl-", "hljs-"];
+  const spanClassPatterns = ["pl-", "hljs-", "code-lang"];
   if (opts.allowMath) {
     // KaTeX class prefixes
     spanClassPatterns.push(
@@ -184,7 +184,7 @@ function buildSchema(opts: RenderOptions) {
   schema.attributes["pre"] = [...(schema.attributes["pre"] ?? []), "className"];
   schema.attributes["div"] = [...(schema.attributes["div"] ?? []), [
     "className",
-    /^(highlight|markdown-)/,
+    /^(highlight|code-header|markdown-)/,
   ]];
 
   // SVG for heading links
@@ -331,6 +331,72 @@ const anchorIcon = {
 };
 
 /**
+ * Rehype plugin to wrap code blocks in a consistent structure.
+ * Wraps `<pre><code>` in `<div class="highlight">`, and if the code has a
+ * `language-*` class, inserts a `<div class="code-header"><span class="code-lang">{lang}</span></div>`.
+ */
+function rehypeCodeBlocks() {
+  return (tree: HastRoot) => {
+    visit(
+      tree,
+      "element",
+      (node: Element, index: number | undefined, parent: unknown) => {
+        if (node.tagName !== "pre" || index === undefined || !parent) return;
+
+        const parentEl = parent as HastRoot | Element;
+
+        // Find the <code> child
+        const codeChild = node.children.find(
+          (child): child is Element =>
+            child.type === "element" && child.tagName === "code",
+        );
+        if (!codeChild) return;
+
+        // Extract language from className
+        const classNames = Array.isArray(codeChild.properties?.className)
+          ? codeChild.properties.className
+          : [];
+        const langClass = classNames.find(
+          (c: string | number) =>
+            typeof c === "string" && c.startsWith("language-"),
+        ) as string | undefined;
+        const language = langClass?.slice("language-".length);
+
+        // Build wrapper children
+        const wrapperChildren: (Element | typeof node)[] = [];
+
+        if (language) {
+          wrapperChildren.push({
+            type: "element",
+            tagName: "div",
+            properties: { className: ["code-header"] },
+            children: [{
+              type: "element",
+              tagName: "span",
+              properties: { className: ["code-lang"] },
+              children: [{ type: "text", value: language }],
+            }],
+          });
+        }
+
+        wrapperChildren.push(node);
+
+        // Replace <pre> with wrapper <div class="highlight">
+        const wrapper: Element = {
+          type: "element",
+          tagName: "div",
+          properties: { className: ["highlight"] },
+          children: wrapperChildren,
+        };
+
+        parentEl.children[index] = wrapper;
+        return SKIP;
+      },
+    );
+  };
+}
+
+/**
  * Helper to apply a plugin spec to a processor.
  * Uses Processor generic to maintain type safety while allowing plugin chaining.
  */
@@ -393,6 +459,9 @@ async function createProcessor(opts: RenderOptions): Promise<Pipeline> {
   if (opts.allowMath) {
     processor = processor.use(rehypeKatex);
   }
+
+  // Wrap code blocks in .highlight with optional language header
+  processor = processor.use(rehypeCodeBlocks);
 
   // Custom rehype plugins (after highlighting, before sanitization)
   if (opts.rehypePlugins) {

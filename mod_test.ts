@@ -493,6 +493,74 @@ describe("edge cases: special markdown patterns", () => {
   });
 });
 
+describe("code block wrapper", () => {
+  it("wraps fenced code with language in .highlight with header (starry-night)", async () => {
+    const html = await render("```js\nconst x = 1;\n```");
+    assertStringIncludes(html, '<div class="highlight">');
+    assertStringIncludes(html, '<div class="code-header">');
+    assertStringIncludes(html, '<span class="code-lang">js</span>');
+    assertStringIncludes(html, "<pre>");
+  });
+
+  it("wraps fenced code with language in .highlight with header (lowlight)", async () => {
+    const html = await render("```js\nconst x = 1;\n```", {
+      highlighter: "lowlight",
+    });
+    assertStringIncludes(html, '<div class="highlight">');
+    assertStringIncludes(html, '<div class="code-header">');
+    assertStringIncludes(html, '<span class="code-lang">js</span>');
+    assertStringIncludes(html, "<pre>");
+  });
+
+  it("wraps fenced code with language in .highlight with header (none)", async () => {
+    const html = await render("```js\nconst x = 1;\n```", {
+      highlighter: "none",
+    });
+    assertStringIncludes(html, '<div class="highlight">');
+    assertStringIncludes(html, '<div class="code-header">');
+    assertStringIncludes(html, '<span class="code-lang">js</span>');
+    assertStringIncludes(html, "<pre>");
+  });
+
+  it("wraps fenced code without language in .highlight without header", async () => {
+    const html = await render("```\nconst x = 1;\n```", {
+      highlighter: "none",
+    });
+    assertStringIncludes(html, '<div class="highlight">');
+    assertEquals(html.includes("code-header"), false);
+    assertEquals(html.includes("code-lang"), false);
+    assertStringIncludes(html, "<pre>");
+  });
+
+  it("wraps indented code blocks in .highlight without header", async () => {
+    const html = await render("    const x = 1;\n    const y = 2;", {
+      highlighter: "none",
+    });
+    assertStringIncludes(html, '<div class="highlight">');
+    assertEquals(html.includes("code-header"), false);
+    assertStringIncludes(html, "<pre>");
+  });
+
+  it("wrapper survives with sanitization enabled", async () => {
+    const html = await render("```js\nconst x = 1;\n```", {
+      highlighter: "none",
+    });
+    assertStringIncludes(html, '<div class="highlight">');
+    assertStringIncludes(html, '<div class="code-header">');
+    assertStringIncludes(html, '<span class="code-lang">js</span>');
+  });
+
+  it("wrapper survives with sanitization disabled", async () => {
+    const html = await render("```js\nconst x = 1;\n```", {
+      highlighter: "none",
+      disableHtmlSanitization: true,
+    });
+    assertStringIncludes(html, '<div class="highlight">');
+    assertStringIncludes(html, '<div class="code-header">');
+    assertStringIncludes(html, '<span class="code-lang">js</span>');
+  });
+});
+
 describe("emoji shortcodes", () => {
   it("converts :wave: to emoji", async () => {
     const html = await render("Hello :wave:");
