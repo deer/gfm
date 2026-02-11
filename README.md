@@ -245,6 +245,99 @@ const html = await render(markdown, {
 Processors are cached for performance. When you provide custom plugins, caching
 is disabled to ensure plugin state is fresh.
 
+## Styling
+
+### Basic Setup
+
+Include the CSS export alongside your rendered HTML:
+
+```ts
+import { CSS } from "@deer/gfm/style";
+
+const page = `
+<html>
+  <head><style>${CSS}</style></head>
+  <body>
+    <div class="markdown-body">${html}</div>
+  </body>
+</html>
+`;
+```
+
+Additional CSS exports are available:
+
+| Export          | Contents                                         |
+| --------------- | ------------------------------------------------ |
+| `CSS`           | Base markdown styles + starry-night highlighting |
+| `HIGHLIGHT_CSS` | Lowlight/highlight.js highlighting               |
+| `KATEX_CSS`     | KaTeX math styles (fonts from CDN)               |
+| `COMBINED_CSS`  | All of the above combined                        |
+
+### Theming with CSS Custom Properties
+
+Override `--gfm-*` variables to theme rendered markdown. No need to touch Primer
+internals — just set the variables you want to change:
+
+```css
+/* Custom brand theme */
+:root {
+  --gfm-accent-color: #6366f1;
+  --gfm-accent-hover: #4f46e5;
+}
+```
+
+All 10 variables with their light/dark defaults:
+
+| Variable                  | Light Default | Dark Default | What it controls                      |
+| ------------------------- | ------------- | ------------ | ------------------------------------- |
+| `--gfm-fg-default`        | `#1f2328`     | `#f0f6fc`    | Body text                             |
+| `--gfm-fg-heading`        | `#1f2328`     | `#f0f6fc`    | Heading text (h1-h6)                  |
+| `--gfm-fg-muted`          | `#59636e`     | `#9198a1`    | Secondary text, code header labels    |
+| `--gfm-accent-color`      | `#0969da`     | `#1f6feb`    | Links, accent borders                 |
+| `--gfm-accent-hover`      | `#0550ae`     | `#58a6ff`    | Link hover state                      |
+| `--gfm-border-color`      | `#d1d9e0`     | `#3d444d`    | Borders (tables, code blocks, alerts) |
+| `--gfm-bg-subtle`         | `#f6f8fa`     | `#151b23`    | Code block backgrounds                |
+| `--gfm-bg-surface`        | `#f6f8fa`     | `#151b23`    | Code headers, alert backgrounds       |
+| `--gfm-inline-code-color` | `inherit`     | `inherit`    | Inline code text color                |
+| `--gfm-inline-code-bg`    | `#818b981f`   | `#656c7633`  | Inline code background                |
+
+### Dark Mode
+
+Dark mode activates automatically via any of:
+
+- `prefers-color-scheme: dark` media query
+- `.dark` class on an ancestor element
+- `data-color-mode="dark"` / `data-dark-theme="dark"` attributes
+
+Override theme variables per mode:
+
+```css
+/* Light mode custom accent */
+:root {
+  --gfm-accent-color: #059669;
+}
+
+/* Dark mode custom accent */
+.dark, [data-color-mode="dark"] {
+  --gfm-accent-color: #34d399;
+}
+```
+
+### GitHub Alerts
+
+The renderer supports
+[GitHub-style alerts](https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax#alerts)
+with colored borders and titles for 5 types: Note, Tip, Important, Warning, and
+Caution. These are styled automatically by the included CSS.
+
+```markdown
+> [!NOTE]
+> Useful information that users should know.
+
+> [!WARNING]
+> Critical content demanding immediate attention.
+```
+
 ## GFM Features
 
 ### Tables
