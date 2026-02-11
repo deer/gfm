@@ -23,7 +23,9 @@ import { unified } from "unified";
  */
 interface Pipeline {
   use(plugin: unknown, ...settings: unknown[]): Pipeline;
-  process(file: string): Promise<{ toString(): string }>;
+  process(
+    file: string,
+  ): Promise<{ toString(): string; data: Record<string, unknown> }>;
   run(tree: unknown): Promise<unknown>;
 }
 import remarkParse from "remark-parse";
@@ -427,6 +429,48 @@ function rehypeUnwrapParagraphs() {
 }
 
 /**
+ * Remark plugin that extracts YAML frontmatter and stores it on vfile.data.
+ */
+function remarkExtractFrontmatter() {
+  return (tree: MdastRoot, file: { data: Record<string, unknown> }) => {
+    for (const node of tree.children) {
+      if (node.type === "yaml") {
+        try {
+          file.data.frontmatter = parseYaml(
+            node.value,
+          ) as Record<string, unknown>;
+        } catch {
+          // Invalid YAML — leave as undefined
+        }
+        break;
+      }
+    }
+  };
+}
+
+/**
+ * Rehype plugin that extracts TOC entries and stores them on vfile.data.
+ * Must run after rehypeSlug (so IDs exist) but before rehypeAutolinkHeadings
+ * (so heading text is clean).
+ */
+function rehypeExtractToc() {
+  return (tree: HastRoot, file: { data: Record<string, unknown> }) => {
+    const toc: TocEntry[] = [];
+    visit(tree, "element", (node: Element) => {
+      const rank = headingRank(node);
+      if (rank && typeof node.properties?.id === "string") {
+        toc.push({
+          text: hastToString(node),
+          depth: rank,
+          slug: node.properties.id,
+        });
+      }
+    });
+    file.data.toc = toc;
+  };
+}
+
+/**
  * Helper to apply a plugin spec to a processor.
  * Uses Processor generic to maintain type safety while allowing plugin chaining.
  */
@@ -460,7 +504,8 @@ async function createProcessor(opts: RenderOptions): Promise<Pipeline> {
   let processor: Pipeline = unified()
     .use(remarkParse)
     .use(remarkGfm)
-    .use(remarkFrontmatter, ["yaml"]);
+    .use(remarkFrontmatter, ["yaml"])
+    .use(remarkExtractFrontmatter);
 
   // Emoji shortcodes (enabled by default)
   if (opts.allowEmoji !== false) {
@@ -484,6 +529,7 @@ async function createProcessor(opts: RenderOptions): Promise<Pipeline> {
     // GitHub-style alerts (> [!NOTE], > [!WARNING], etc.)
     .use(rehypeGithubAlerts)
     .use(rehypeSlug)
+    .use(rehypeExtractToc)
     .use(rehypeAutolinkHeadings, {
       behavior: "prepend",
       properties: { ariaHidden: true, tabIndex: -1, className: ["anchor"] },
@@ -543,6 +589,7 @@ async function createProcessor(opts: RenderOptions): Promise<Pipeline> {
 }
 
 // Processor cache (only used when no custom plugins are provided)
+const MAX_CACHE_SIZE = 10;
 const processorCache = new Map<string, Promise<Pipeline>>();
 
 function getCacheKey(opts: RenderOptions): string | null {
@@ -569,12 +616,45 @@ function getProcessor(opts: RenderOptions): Promise<Pipeline> {
     return createProcessor(opts);
   }
 
-  let cached = processorCache.get(key);
-  if (!cached) {
-    cached = createProcessor(opts);
+  const cached = processorCache.get(key);
+  if (cached) {
+    // Move to end (most recently used) via delete + re-insert
+    processorCache.delete(key);
     processorCache.set(key, cached);
+    return cached;
   }
-  return cached;
+
+  // Evict oldest entry if at capacity
+  if (processorCache.size >= MAX_CACHE_SIZE) {
+    const oldest = processorCache.keys().next().value!;
+    processorCache.delete(oldest);
+  }
+
+  const created = createProcessor(opts);
+  processorCache.set(key, created);
+  return created;
+}
+
+/**
+ * Clear all cached processors.
+ * Useful in long-running servers to free memory or force re-creation.
+ */
+export function clearCache(): void {
+  processorCache.clear();
+}
+
+/**
+ * Pre-warm the processor cache for the given options.
+ * Defaults to `{}` which triggers starry-night initialization (the primary use case).
+ *
+ * @example
+ * ```ts
+ * await warmup(); // pre-warm default starry-night processor
+ * await warmup({ highlighter: "lowlight" }); // pre-warm lowlight
+ * ```
+ */
+export async function warmup(opts: RenderOptions = {}): Promise<void> {
+  await getProcessor(opts);
 }
 
 /**
@@ -616,56 +696,12 @@ export async function renderWithMeta(
   opts: RenderOptions = {},
 ): Promise<RenderResult> {
   const processor = await getProcessor(opts);
-
-  // Parse mdast for frontmatter
-  const mdast = unified()
-    .use(remarkParse)
-    .use(remarkGfm)
-    .use(remarkFrontmatter, ["yaml"])
-    .parse(markdown) as MdastRoot;
-
-  // Extract frontmatter
-  let frontmatter: Record<string, unknown> | null = null;
-  for (const node of mdast.children) {
-    if (node.type === "yaml") {
-      try {
-        frontmatter = parseYaml(node.value) as Record<string, unknown>;
-      } catch {
-        // Invalid YAML
-      }
-      break;
-    }
-  }
-
-  // Process to hast for TOC
-  let hastProcessor: Pipeline = unified()
-    .use(remarkParse)
-    .use(remarkGfm)
-    .use(remarkFrontmatter, ["yaml"]) as Pipeline;
-  if (opts.allowMath) {
-    hastProcessor = hastProcessor.use(remarkMath) as Pipeline;
-  }
-  hastProcessor = hastProcessor.use(remarkRehype).use(
-    rehypeSlug,
-  ) as Pipeline;
-  const hast = (await hastProcessor.run(mdast)) as HastRoot;
-
-  // Extract TOC
-  const toc: TocEntry[] = [];
-  visit(hast, "element", (node: Element) => {
-    const rank = headingRank(node);
-    if (rank && typeof node.properties?.id === "string") {
-      toc.push({
-        text: hastToString(node),
-        depth: rank,
-        slug: node.properties.id,
-      });
-    }
-  });
-
-  // Render HTML
   const result = await processor.process(markdown);
-  return { html: String(result), toc, frontmatter };
+  return {
+    html: String(result),
+    toc: (result.data.toc as TocEntry[]) ?? [],
+    frontmatter: (result.data.frontmatter as Record<string, unknown>) ?? null,
+  };
 }
 
 /**

@@ -4,7 +4,7 @@
  * Run with: deno bench --allow-read --allow-env
  */
 
-import { render } from "./mod.ts";
+import { render, renderWithMeta, warmup } from "./mod.ts";
 
 // =============================================================================
 // Test Documents
@@ -141,9 +141,9 @@ const codeHeavyDoc = generateCodeHeavyDoc();
 // =============================================================================
 
 // Warm up all highlighters before benchmarks run
-await render("# warmup", { highlighter: "starry-night" });
-await render("# warmup", { highlighter: "lowlight" });
-await render("# warmup", { highlighter: "none" });
+await warmup({ highlighter: "starry-night" });
+await warmup({ highlighter: "lowlight" });
+await warmup({ highlighter: "none" });
 
 // =============================================================================
 // Small Document Benchmarks
@@ -258,5 +258,50 @@ Deno.bench({
   group: "code-heavy",
   fn: async () => {
     await render(codeHeavyDoc, { highlighter: "none" });
+  },
+});
+
+// =============================================================================
+// render() vs renderWithMeta() — single-pass parity check
+// =============================================================================
+
+const metaDoc = `---
+title: Benchmark Doc
+---
+
+# Introduction
+
+Some content here.
+
+## Getting Started
+
+More content with **bold** and *italic*.
+
+### Code Example
+
+\`\`\`typescript
+const x: number = 42;
+console.log(x);
+\`\`\`
+
+## Conclusion
+
+Final thoughts.
+`;
+
+Deno.bench({
+  name: "render",
+  group: "render-vs-meta",
+  baseline: true,
+  fn: async () => {
+    await render(metaDoc, { highlighter: "lowlight" });
+  },
+});
+
+Deno.bench({
+  name: "renderWithMeta",
+  group: "render-vs-meta",
+  fn: async () => {
+    await renderWithMeta(metaDoc, { highlighter: "lowlight" });
   },
 });

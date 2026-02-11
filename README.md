@@ -170,6 +170,34 @@ tags: [a, b, c]
 // { title: "Hello", tags: ["a", "b", "c"] }
 ```
 
+### `warmup(options?)`
+
+Pre-initialize a processor so the first `render()` call is fast. Especially
+useful for `starry-night`, which has a slow initial load.
+
+```ts
+await warmup(options?: RenderOptions): Promise<void>
+```
+
+**Example:**
+
+```ts
+// At server startup — pre-warm the default (starry-night) processor
+await warmup();
+
+// Or pre-warm a specific config
+await warmup({ highlighter: "lowlight", allowMath: true });
+```
+
+### `clearCache()`
+
+Evict all cached processors. Useful in long-running servers to free memory or
+force re-creation after configuration changes.
+
+```ts
+clearCache(): void
+```
+
 ## Options
 
 ### `RenderOptions`
@@ -238,23 +266,27 @@ const html = await render(markdown, {
 1. `remark-parse` (markdown → mdast)
 2. `remark-gfm` (tables, strikethrough, etc.)
 3. `remark-frontmatter` (YAML frontmatter)
-4. `remark-emoji` (if enabled)
-5. `remark-math` (if enabled)
-6. **Your `remarkPlugins`** ← custom
-7. `remark-rehype` (mdast → hast)
-8. `rehype-slug` (heading IDs)
-9. `rehype-autolink-headings` (anchor links)
-10. URL resolution (if `baseUrl` set)
-11. Syntax highlighting
-12. `rehype-katex` (if enabled)
-13. **Your `rehypePlugins`** ← custom
-14. `rehype-sanitize` (if enabled)
-15. `rehype-stringify` (hast → html)
+4. Frontmatter extraction (stores on `vfile.data` for `renderWithMeta`)
+5. `remark-emoji` (if enabled)
+6. `remark-math` (if enabled)
+7. **Your `remarkPlugins`** ← custom
+8. `remark-rehype` (mdast → hast)
+9. `rehype-slug` (heading IDs)
+10. TOC extraction (stores on `vfile.data` for `renderWithMeta`)
+11. `rehype-autolink-headings` (anchor links)
+12. URL resolution (if `baseUrl` set)
+13. Syntax highlighting
+14. `rehype-katex` (if enabled)
+15. **Your `rehypePlugins`** ← custom
+16. `rehype-sanitize` (if enabled)
+17. `rehype-stringify` (hast → html)
 
 ### Note on Caching
 
-Processors are cached for performance. When you provide custom plugins, caching
-is disabled to ensure plugin state is fresh.
+Processors are cached for performance (LRU, up to 10 entries). When you provide
+custom plugins, caching is disabled to ensure plugin state is fresh. Use
+`clearCache()` to manually evict all entries, or `warmup()` to pre-populate the
+cache at startup.
 
 ## Styling
 
@@ -420,17 +452,31 @@ HTML is sanitized by default. The sanitizer:
 
 ## Performance Tips
 
-1. **Reuse the same options** — Processors are cached by option signature
-2. **Use `lowlight`** — 2-5x faster than `starry-night`
-3. **Use `extractToc()`** — Much faster than `renderWithMeta()` if you only need
+1. **Call `warmup()` at startup** — Pre-initializes the processor so the first
+   render is fast (starry-night has a slow cold start)
+2. **Reuse the same options** — Processors are cached by option signature (LRU,
+   up to 10 entries)
+3. **Use `lowlight`** — 2-5x faster than `starry-night`
+4. **Use `renderWithMeta()`** — Same speed as `render()` but also returns TOC
+   and frontmatter in a single pass
+5. **Use `extractToc()`** — Much faster than a full render if you _only_ need
    TOC
-4. **Use `parseFrontmatter()`** — Much faster if you only need metadata
+6. **Use `parseFrontmatter()`** — Much faster if you only need metadata
 
 ## TypeScript
 
 Full type definitions included:
 
 ```ts
+import {
+  clearCache,
+  extractToc,
+  parseFrontmatter,
+  render,
+  renderWithMeta,
+  warmup,
+} from "@deer/gfm";
+
 import type {
   Highlighter,
   RenderOptions,

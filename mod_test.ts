@@ -3,7 +3,14 @@ import { describe, it } from "@std/testing/bdd";
 import type { Paragraph, Root as MdastRoot } from "mdast";
 import type { Element, Root as HastRoot } from "hast";
 
-import { extractToc, parseFrontmatter, render, renderWithMeta } from "./mod.ts";
+import {
+  clearCache,
+  extractToc,
+  parseFrontmatter,
+  render,
+  renderWithMeta,
+  warmup,
+} from "./mod.ts";
 
 describe("render", () => {
   it("renders basic markdown", async () => {
@@ -976,5 +983,129 @@ describe("baseUrl validation", () => {
       Error,
       "://broken",
     );
+  });
+});
+
+// =============================================================================
+// Cache Management Tests
+// =============================================================================
+
+describe("clearCache", () => {
+  it("is callable without error", () => {
+    clearCache();
+  });
+
+  it("renders still work after clearing", async () => {
+    clearCache();
+    const html = await render("# Hello");
+    assertStringIncludes(html, "<h1");
+    assertStringIncludes(html, "Hello");
+  });
+
+  it("can be called multiple times", () => {
+    clearCache();
+    clearCache();
+    clearCache();
+  });
+});
+
+describe("warmup", () => {
+  it("pre-warms default (starry-night) processor", async () => {
+    clearCache();
+    await warmup();
+    // Subsequent render should succeed
+    const html = await render("```js\nconst x = 1;\n```");
+    assertStringIncludes(html, "<pre>");
+  });
+
+  it("pre-warms specific highlighter config", async () => {
+    clearCache();
+    await warmup({ highlighter: "lowlight" });
+    const html = await render("```js\nconst x = 1;\n```", {
+      highlighter: "lowlight",
+    });
+    assertStringIncludes(html, "<pre>");
+  });
+
+  it("pre-warms with math enabled", async () => {
+    clearCache();
+    await warmup({ allowMath: true });
+    const html = await render("$x^2$", { allowMath: true });
+    assertStringIncludes(html, "<math");
+  });
+});
+
+// =============================================================================
+// renderWithMeta Regression Tests
+// =============================================================================
+
+describe("renderWithMeta regression", () => {
+  const testDoc = `---
+title: Test Document
+author: Jane Doe
+tags:
+  - markdown
+  - test
+---
+
+# Introduction
+
+Welcome to the test document.
+
+## Getting Started
+
+Here is how you get started.
+
+### Prerequisites
+
+You need Deno installed.
+
+## Conclusion
+
+That's all folks.
+`;
+
+  it("HTML output matches render() for same input", async () => {
+    const opts = { highlighter: "lowlight" as const };
+    const renderHtml = await render(testDoc, opts);
+    const { html: metaHtml } = await renderWithMeta(testDoc, opts);
+    assertEquals(metaHtml, renderHtml);
+  });
+
+  it("TOC matches extractToc() results", async () => {
+    const { toc: metaToc } = await renderWithMeta(testDoc, {
+      highlighter: "lowlight",
+    });
+    const standaloneToc = extractToc(testDoc);
+
+    assertEquals(metaToc.length, standaloneToc.length);
+    for (let i = 0; i < metaToc.length; i++) {
+      assertEquals(metaToc[i].text, standaloneToc[i].text);
+      assertEquals(metaToc[i].depth, standaloneToc[i].depth);
+      assertEquals(metaToc[i].slug, standaloneToc[i].slug);
+    }
+  });
+
+  it("frontmatter matches parseFrontmatter() results", async () => {
+    const { frontmatter: metaFm } = await renderWithMeta(testDoc, {
+      highlighter: "lowlight",
+    });
+    const standaloneFm = parseFrontmatter(testDoc);
+
+    assertEquals(metaFm, standaloneFm);
+  });
+
+  it("returns empty TOC for doc without headings", async () => {
+    const { toc } = await renderWithMeta("Just a paragraph.", {
+      highlighter: "lowlight",
+    });
+    assertEquals(toc, []);
+  });
+
+  it("returns null frontmatter when none exists", async () => {
+    const { frontmatter } = await renderWithMeta("# No frontmatter", {
+      highlighter: "lowlight",
+    });
+    assertEquals(frontmatter, null);
   });
 });
