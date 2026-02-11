@@ -39,6 +39,8 @@ import rehypeStringify from "rehype-stringify";
 import rehypeStarryNight from "rehype-starry-night";
 import rehypeHighlight from "rehype-highlight";
 import rehypeKatex from "rehype-katex";
+import rehypeRaw from "rehype-raw";
+import { rehypeGithubAlerts } from "rehype-github-alerts";
 import { toString as hastToString } from "hast-util-to-string";
 import { headingRank } from "hast-util-heading-rank";
 import { SKIP, visit } from "unist-util-visit";
@@ -441,7 +443,10 @@ async function createProcessor(opts: RenderOptions): Promise<Pipeline> {
   }
 
   processor = processor
-    .use(remarkRehype, { allowDangerousHtml: false })
+    .use(remarkRehype, { allowDangerousHtml: true })
+    .use(rehypeRaw)
+    // GitHub-style alerts (> [!NOTE], > [!WARNING], etc.)
+    .use(rehypeGithubAlerts)
     .use(rehypeSlug)
     .use(rehypeAutolinkHeadings, {
       behavior: "prepend",

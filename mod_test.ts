@@ -561,6 +561,112 @@ describe("code block wrapper", () => {
   });
 });
 
+describe("GitHub alerts", () => {
+  const alertTypes = [
+    "NOTE",
+    "TIP",
+    "IMPORTANT",
+    "WARNING",
+    "CAUTION",
+  ] as const;
+
+  for (const type of alertTypes) {
+    it(`renders ${type} alert`, async () => {
+      const html = await render(
+        `> [!${type}]\n> Some ${type.toLowerCase()} content`,
+      );
+      assertStringIncludes(html, "markdown-alert");
+      assertStringIncludes(html, `markdown-alert-${type.toLowerCase()}`);
+      assertStringIncludes(html, `${type.toLowerCase()} content`);
+    });
+  }
+
+  it("alert title text is present", async () => {
+    const html = await render("> [!NOTE]\n> info");
+    assertStringIncludes(html, "markdown-alert-title");
+    assertStringIncludes(html, "Note");
+  });
+
+  it("alert icons survive sanitization", async () => {
+    const html = await render("> [!NOTE]\n> info");
+    assertStringIncludes(html, "<svg");
+    assertStringIncludes(html, "<path");
+  });
+
+  it("alerts survive sanitization", async () => {
+    const html = await render("> [!WARNING]\n> be careful");
+    assertStringIncludes(html, "markdown-alert");
+    assertStringIncludes(html, "markdown-alert-title");
+    assertStringIncludes(html, "be careful");
+  });
+});
+
+describe("allowIframes", () => {
+  it("strips iframes by default", async () => {
+    const html = await render('<iframe src="https://example.com"></iframe>');
+    assertEquals(html.includes("<iframe"), false);
+  });
+
+  it("allows iframes when enabled", async () => {
+    const html = await render('<iframe src="https://example.com"></iframe>', {
+      allowIframes: true,
+    });
+    assertStringIncludes(html, "<iframe");
+    assertStringIncludes(html, 'src="https://example.com"');
+  });
+
+  it("only allows safe iframe attributes", async () => {
+    const html = await render(
+      '<iframe src="https://example.com" onload="alert(1)" width="100" height="50"></iframe>',
+      { allowIframes: true },
+    );
+    assertStringIncludes(html, 'src="https://example.com"');
+    assertStringIncludes(html, 'width="100"');
+    assertStringIncludes(html, 'height="50"');
+    assertEquals(html.includes("onload"), false);
+  });
+});
+
+describe("video/audio URL resolution", () => {
+  it("resolves relative video src", async () => {
+    const html = await render('<video src="video.mp4"></video>', {
+      baseUrl: "https://example.com/media/",
+      disableHtmlSanitization: true,
+    });
+    assertStringIncludes(html, 'src="https://example.com/media/video.mp4"');
+  });
+
+  it("resolves relative audio src", async () => {
+    const html = await render('<audio src="podcast.mp3"></audio>', {
+      baseUrl: "https://example.com/media/",
+      disableHtmlSanitization: true,
+    });
+    assertStringIncludes(html, 'src="https://example.com/media/podcast.mp3"');
+  });
+
+  it("resolves source element src inside video", async () => {
+    const html = await render(
+      '<video><source src="clip.mp4"></video>',
+      {
+        baseUrl: "https://example.com/media/",
+        disableHtmlSanitization: true,
+      },
+    );
+    assertStringIncludes(html, 'src="https://example.com/media/clip.mp4"');
+  });
+
+  it("preserves absolute video URLs", async () => {
+    const html = await render(
+      '<video src="https://cdn.example.com/video.mp4"></video>',
+      {
+        baseUrl: "https://example.com/media/",
+        disableHtmlSanitization: true,
+      },
+    );
+    assertStringIncludes(html, 'src="https://cdn.example.com/video.mp4"');
+  });
+});
+
 describe("emoji shortcodes", () => {
   it("converts :wave: to emoji", async () => {
     const html = await render("Hello :wave:");
