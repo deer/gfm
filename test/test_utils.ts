@@ -16,7 +16,9 @@ export type TestCases =
   | "math"
   | "theme"
   | "codeblocks"
-  | "alerts";
+  | "alerts"
+  | "inline"
+  | "inline-block";
 
 /** Custom theme overrides for the theme demo page — intentionally loud. */
 const THEME_OVERRIDES = `
@@ -56,6 +58,13 @@ export const testCases: Record<TestCases, TestCase> = {
   },
   alerts: {
     markdown: Deno.readTextFileSync("./test/fixtures/alerts.md"),
+  },
+  inline: {
+    markdown: Deno.readTextFileSync("./test/fixtures/inline.md"),
+    renderOptions: { inline: true },
+  },
+  "inline-block": {
+    markdown: Deno.readTextFileSync("./test/fixtures/inline.md"),
   },
 };
 

@@ -110,6 +110,33 @@ describe("browser tests", () => {
     });
   });
 
+  it("renders inline vs block with same markdown", async () => {
+    // Same fixture rendered without inline (block) — should have <p> tags
+    await browserTest("inline-block", async (page) => {
+      const blockPs = await page.$$(".markdown-body p");
+      assertEquals(blockPs.length > 0, true);
+
+      const blockStrongs = await page.$$(".markdown-body strong");
+      assertEquals(blockStrongs.length > 0, true);
+    });
+
+    // Same fixture rendered with inline: true — no <p> tags
+    await browserTest("inline", async (page) => {
+      const inlinePs = await page.$$(".markdown-body p");
+      assertEquals(inlinePs.length, 0);
+
+      // Inline formatting still present
+      const inlineStrongs = await page.$$(".markdown-body strong");
+      assertEquals(inlineStrongs.length > 0, true);
+
+      const links = await page.$$(".markdown-body a[href]");
+      assertEquals(links.length > 0, true);
+
+      const codes = await page.$$(".markdown-body code");
+      assertEquals(codes.length > 0, true);
+    });
+  });
+
   it("renders code blocks with headers and wrappers", async () => {
     await browserTest("codeblocks", async (page) => {
       // Page uses our generated CSS for code block styling

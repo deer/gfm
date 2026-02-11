@@ -68,6 +68,10 @@ const html = await render(
   '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>',
   { allowIframes: true },
 );
+
+// Inline rendering (no <p> wrapping, for UI labels/table cells)
+const label = await render("**Status:** Active", { inline: true });
+// <strong>Status:</strong> Active
 ```
 
 ### `renderWithMeta(markdown, options?)`
@@ -179,6 +183,7 @@ tags: [a, b, c]
 | `baseUrl`                 | `string`                                     | —                | Base URL for relative links             |
 | `remarkPlugins`           | `PluginSpec[]`                               | —                | Custom remark plugins                   |
 | `rehypePlugins`           | `PluginSpec[]`                               | —                | Custom rehype plugins                   |
+| `inline`                  | `boolean`                                    | `false`          | Strip `<p>` wrapping for inline use     |
 | `disableHtmlSanitization` | `boolean`                                    | `false`          | Disable sanitization (dangerous!)       |
 
 ### Highlighter Comparison
