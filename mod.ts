@@ -187,6 +187,12 @@ function buildSchema(opts: RenderOptions) {
     /^(highlight|code-header|markdown-)/,
   ]];
 
+  // Allow alert title class on <p> tags
+  schema.attributes["p"] = [
+    ...(schema.attributes["p"] ?? []),
+    ["className", /^markdown-alert-title$/],
+  ];
+
   // SVG for heading links
   schema.tagNames = [...(schema.tagNames ?? []), "svg", "path"];
   schema.attributes["svg"] = [
