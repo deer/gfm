@@ -441,8 +441,22 @@ function applyPlugin(
   return processor.use(plugin) as Pipeline;
 }
 
+/** Validate that baseUrl is a well-formed URL, if provided. */
+function validateBaseUrl(baseUrl: string | undefined): void {
+  if (baseUrl === undefined) return;
+  try {
+    new URL(baseUrl);
+  } catch {
+    throw new Error(
+      `Invalid baseUrl: "${baseUrl}". Provide a fully-qualified URL ` +
+        '(e.g., "https://example.com/docs/").',
+    );
+  }
+}
+
 // Create the unified processor pipeline
 async function createProcessor(opts: RenderOptions): Promise<Pipeline> {
+  validateBaseUrl(opts.baseUrl);
   let processor: Pipeline = unified()
     .use(remarkParse)
     .use(remarkGfm)
@@ -481,8 +495,20 @@ async function createProcessor(opts: RenderOptions): Promise<Pipeline> {
   // Add syntax highlighter
   const highlighter = opts.highlighter ?? "starry-night";
   if (highlighter === "starry-night") {
-    const { createStarryNight, common } = await import("@wooorm/starry-night");
-    const starryNight = await createStarryNight(common);
+    let starryNight;
+    try {
+      const { createStarryNight, common } = await import(
+        "@wooorm/starry-night"
+      );
+      starryNight = await createStarryNight(common);
+    } catch (cause) {
+      throw new Error(
+        'Failed to load syntax highlighter "starry-night". ' +
+          "Make sure @wooorm/starry-night is installed, or use " +
+          '{ highlighter: "lowlight" } as a lighter alternative.',
+        { cause },
+      );
+    }
     processor = processor.use(rehypeStarryNight, { starryNight });
   } else if (highlighter === "lowlight") {
     processor = processor.use(rehypeHighlight, { detect: true });
