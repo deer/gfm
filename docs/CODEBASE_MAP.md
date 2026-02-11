@@ -89,17 +89,19 @@ graph TB
 **Purpose**: Main module exporting all public rendering functions **Entry
 point**: `@deer/gfm` (via deno.jsonc exports)
 
-| Export                           | Purpose                                     |
-| -------------------------------- | ------------------------------------------- |
-| `render(markdown, opts)`         | Core HTML rendering                         |
-| `renderWithMeta(markdown, opts)` | Render with TOC + frontmatter extraction    |
-| `extractToc(markdown)`           | Lightweight TOC extraction (no full render) |
-| `parseFrontmatter(markdown)`     | Parse YAML frontmatter only                 |
-| `Highlighter` type               | `"starry-night" \| "lowlight"`              |
-| `RenderOptions` type             | Full options interface                      |
-| `RenderResult` type              | Return type of renderWithMeta               |
-| `TocEntry` type                  | `{ depth, text, slug }`                     |
-| `PluginSpec` type                | Plugin or `[Plugin, ...opts]` tuple         |
+| Export                           | Purpose                                      |
+| -------------------------------- | -------------------------------------------- |
+| `render(markdown, opts)`         | Core HTML rendering                          |
+| `renderWithMeta(markdown, opts)` | Render with TOC + frontmatter extraction     |
+| `extractToc(markdown)`           | Lightweight TOC extraction (no full render)  |
+| `parseFrontmatter(markdown)`     | Parse YAML frontmatter only                  |
+| `clearCache()`                   | Evict all cached processors                  |
+| `warmup(opts?)`                  | Pre-initialize a processor for given options |
+| `Highlighter` type               | `"starry-night" \| "lowlight"`               |
+| `RenderOptions` type             | Full options interface                       |
+| `RenderResult` type              | Return type of renderWithMeta                |
+| `TocEntry` type                  | `{ depth, text, slug }`                      |
+| `PluginSpec` type                | Plugin or `[Plugin, ...opts]` tuple          |
 
 **Dependencies**: unified, remark-parse, remark-gfm, remark-frontmatter,
 remark-math, remark-emoji, remark-rehype, rehype-slug, rehype-autolink-headings,
@@ -111,8 +113,12 @@ mdast-util-to-string, github-slugger, yaml
 
 - Builds unified processor pipeline dynamically based on options
 - Processors cached by JSON-stringified options (disabled with custom plugins)
+- LRU cache eviction at 10 entries using `Map` insertion-order semantics
 - Starry-night lazy-loaded via dynamic import
 - Sanitization schema built dynamically based on enabled features
+- Two internal plugins (`remarkExtractFrontmatter`, `rehypeExtractToc`) extract
+  metadata to `vfile.data` during every render pass, enabling `renderWithMeta()`
+  to work in a single pass
 
 ### style.ts (CSS Exports)
 
@@ -152,8 +158,8 @@ unicode, malformed input, large documents
 
 **Purpose**: Performance benchmarks comparing highlighters across document sizes
 
-**Groups**: Small, medium, large, code-heavy documents **Baseline**: Lowlight
-(faster than starry-night)
+**Groups**: Small, medium, large, code-heavy documents, render-vs-meta
+**Baseline**: Lowlight (faster than starry-night)
 
 ### test/ (Test Infrastructure)
 
@@ -188,10 +194,11 @@ sequenceDiagram
     stringify-->>User: HTML string
 ```
 
-**renderWithMeta** additionally extracts:
+**renderWithMeta** reads metadata from `vfile.data` (populated by pipeline
+plugins during the same render pass):
 
-- **TOC**: Visits HAST heading nodes → `{ depth, text, slug }[]`
-- **Frontmatter**: Finds YAML node in MDAST → parsed object
+- **TOC**: `rehypeExtractToc` walks HAST headings after `rehypeSlug` adds IDs
+- **Frontmatter**: `remarkExtractFrontmatter` finds the YAML node in MDAST
 
 ## Conventions
 
@@ -210,6 +217,8 @@ sequenceDiagram
 ### Core Rendering
 
 - Processor cache uses `JSON.stringify()` — object key order matters
+- Cache is LRU with a cap of 10; oldest entry evicted when full
+- `clearCache()` drops all entries; `warmup()` pre-creates a processor
 - Emoji shortcodes enabled by default (opt-out with `allowEmoji: false`)
 - `baseUrl` auto-appends trailing `/` if missing
 - Custom plugins disable the processor cache
