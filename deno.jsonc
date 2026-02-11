@@ -1,6 +1,6 @@
 {
   "name": "@deer/gfm",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "license": "MIT",
   "exports": {
     ".": "./mod.ts",
@@ -46,10 +46,15 @@
   },
   "publish": {
     "exclude": [
-      "test/",
-      "style/",
+      ".github/",
+      "bench.ts",
+      "CLAUDE.md",
+      "deno.lock",
+      "docs/",
       "mod_test.ts",
-      "bench.ts"
+      "ROADMAP.md",
+      "style/",
+      "test/"
     ]
   },
   "tasks": {
