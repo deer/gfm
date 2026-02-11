@@ -200,6 +200,7 @@ const GFM_COMPONENT_CSS =
   `border-left:4px solid var(--gfm-border-color);border-radius:0 6px 6px 0}` +
   `.markdown-body .markdown-alert .markdown-alert-title{display:flex;` +
   `align-items:center;gap:8px;font-weight:600;margin-bottom:4px}` +
+  `.markdown-body .markdown-alert-title svg{fill:currentColor}` +
   // Alert types — light
   `.markdown-body .markdown-alert-note{border-left-color:#0969da}` +
   `.markdown-body .markdown-alert-note .markdown-alert-title{color:#0969da}` +

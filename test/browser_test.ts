@@ -84,6 +84,32 @@ describe("browser tests", () => {
     });
   });
 
+  it("renders GitHub alerts", async () => {
+    await browserTest("alerts", async (page) => {
+      const alerts = await page.$$(".markdown-alert");
+      assertEquals(alerts.length, 5);
+
+      const titles = await page.$$(".markdown-alert-title");
+      assertEquals(titles.length, 5);
+
+      // Alerts should have visible left border
+      const hasBorderLeft = await page.evaluate(() => {
+        const alert = document.querySelector(".markdown-alert");
+        if (!alert) return false;
+        const style = getComputedStyle(alert);
+        return style.borderLeftStyle === "solid" &&
+          style.borderLeftWidth !== "0px";
+      });
+      assertEquals(hasBorderLeft, true);
+
+      // Alert icons should be inline SVGs
+      const iconCount = await page.evaluate(() => {
+        return document.querySelectorAll(".markdown-alert-title svg").length;
+      });
+      assertEquals(iconCount, 5);
+    });
+  });
+
   it("renders code blocks with headers and wrappers", async () => {
     await browserTest("codeblocks", async (page) => {
       // Page uses our generated CSS for code block styling

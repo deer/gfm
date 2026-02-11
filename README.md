@@ -62,6 +62,12 @@ const html = await render(code, { highlighter: "lowlight" });
 
 // With math support
 const html = await render("$E = mc^2$", { allowMath: true });
+
+// Allow iframes (e.g. embedded videos)
+const html = await render(
+  '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>',
+  { allowIframes: true },
+);
 ```
 
 ### `renderWithMeta(markdown, options?)`

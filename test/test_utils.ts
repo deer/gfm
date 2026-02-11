@@ -15,7 +15,8 @@ export type TestCases =
   | "gfm"
   | "math"
   | "theme"
-  | "codeblocks";
+  | "codeblocks"
+  | "alerts";
 
 /** Custom theme overrides for the theme demo page — intentionally loud. */
 const THEME_OVERRIDES = `
@@ -52,6 +53,9 @@ export const testCases: Record<TestCases, TestCase> = {
   },
   codeblocks: {
     markdown: Deno.readTextFileSync("./test/fixtures/codeblocks.md"),
+  },
+  alerts: {
+    markdown: Deno.readTextFileSync("./test/fixtures/alerts.md"),
   },
 };
 

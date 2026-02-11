@@ -35,8 +35,10 @@
     "npm:hast-util-to-string@^3.0.1": "3.0.1",
     "npm:mdast-util-to-string@4": "4.0.0",
     "npm:rehype-autolink-headings@^7.1.0": "7.1.0",
+    "npm:rehype-github-alerts@^4.2.0": "4.2.0",
     "npm:rehype-highlight@^7.0.2": "7.0.2",
     "npm:rehype-katex@^7.0.1": "7.0.1",
+    "npm:rehype-raw@7": "7.0.0",
     "npm:rehype-sanitize@6": "6.0.0",
     "npm:rehype-slug@6": "6.0.0",
     "npm:rehype-starry-night@^2.2.0": "2.2.0",
@@ -246,6 +248,12 @@
         "@primer/primitives"
       ]
     },
+    "@primer/octicons@19.21.2": {
+      "integrity": "sha512-SRTcpAZtKYh2266VQpAqNkXAQpPvYWk6dxggkHDzwI95NrE5mEzJ7cfFt/bSVbqDffKQ+tm7TEdLHoSjEcggfQ==",
+      "dependencies": [
+        "object-assign"
+      ]
+    },
     "@primer/primitives@9.1.2_prettier@3.3.3": {
       "integrity": "sha512-KecRJpUdIf14J3gVpoyMMJeQD6Sh5kcHk93N5bYch4XGB0GOZP3ypxz+NByMjr/2HHPsRfCCO5EEgNjmeWYUGQ==",
       "dependencies": [
@@ -435,6 +443,24 @@
         "@types/hast"
       ]
     },
+    "hast-util-raw@9.1.0": {
+      "integrity": "sha512-Y8/SBAHkZGoNkpzqqfCldijcuUKh7/su31kEBp67cFY09Wy0mTRgtsLYsiIxMJxlu0f6AA5SUTbDR8K0rxnbUw==",
+      "dependencies": [
+        "@types/hast",
+        "@types/unist",
+        "@ungap/structured-clone",
+        "hast-util-from-parse5",
+        "hast-util-to-parse5",
+        "html-void-elements",
+        "mdast-util-to-hast",
+        "parse5",
+        "unist-util-position",
+        "unist-util-visit",
+        "vfile",
+        "web-namespaces",
+        "zwitch"
+      ]
+    },
     "hast-util-sanitize@5.0.2": {
       "integrity": "sha512-3yTWghByc50aGS7JlGhk61SPenfE/p1oaFeNwkOOyrscaOkMGrcW9+Cy/QAIOBpZxP1yqDIzFMR0+Np0i0+usg==",
       "dependencies": [
@@ -456,6 +482,18 @@
         "property-information",
         "space-separated-tokens",
         "stringify-entities",
+        "zwitch"
+      ]
+    },
+    "hast-util-to-parse5@8.0.1": {
+      "integrity": "sha512-MlWT6Pjt4CG9lFCjiz4BH7l9wmrMkfkJYCxFwKQic8+RTZgWPuWxwAfjJElsXkex7DJjfSJsQIt931ilUgmwdA==",
+      "dependencies": [
+        "@types/hast",
+        "comma-separated-tokens",
+        "devlop",
+        "property-information",
+        "space-separated-tokens",
+        "web-namespaces",
         "zwitch"
       ]
     },
@@ -968,6 +1006,9 @@
         "skin-tone"
       ]
     },
+    "object-assign@4.1.1": {
+      "integrity": "sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg=="
+    },
     "parse5@7.3.0": {
       "integrity": "sha512-IInvU7fabl34qmi9gY8XOVxhYyMyuH2xUNpb2q8/Y+7552KlejkRvqvD19nMoUW/uQGGbqNpA6Tufu5FL5BZgw==",
       "dependencies": [
@@ -998,6 +1039,15 @@
         "unist-util-visit"
       ]
     },
+    "rehype-github-alerts@4.2.0": {
+      "integrity": "sha512-6di6kEu9WUHKLKrkKG2xX6AOuaCMGghg0Wq7MEuM/jBYUPVIq6PJpMe00dxMfU+/YSBtDXhffpDimgDi+BObIQ==",
+      "dependencies": [
+        "@primer/octicons",
+        "hast-util-from-html",
+        "hast-util-is-element",
+        "unist-util-visit"
+      ]
+    },
     "rehype-highlight@7.0.2": {
       "integrity": "sha512-k158pK7wdC2qL3M5NcZROZ2tR/l7zOzjxXd5VGdcfIyoijjQqpHd3JKtYSBDpDZ38UI2WJWuFAtkMDxmx5kstA==",
       "dependencies": [
@@ -1017,6 +1067,14 @@
         "hast-util-to-text",
         "katex",
         "unist-util-visit-parents",
+        "vfile"
+      ]
+    },
+    "rehype-raw@7.0.0": {
+      "integrity": "sha512-/aE8hCfKlQeA8LmyeyQvQF3eBiLRGNlfBJEvWH7ivp9sBqs7TNqBL5X3v157rM4IFETqDnIOO+z5M/biZbo9Ww==",
+      "dependencies": [
+        "@types/hast",
+        "hast-util-raw",
         "vfile"
       ]
     },
@@ -1272,8 +1330,10 @@
       "npm:hast-util-to-string@^3.0.1",
       "npm:mdast-util-to-string@4",
       "npm:rehype-autolink-headings@^7.1.0",
+      "npm:rehype-github-alerts@^4.2.0",
       "npm:rehype-highlight@^7.0.2",
       "npm:rehype-katex@^7.0.1",
+      "npm:rehype-raw@7",
       "npm:rehype-sanitize@6",
       "npm:rehype-slug@6",
       "npm:rehype-starry-night@^2.2.0",
