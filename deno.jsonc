@@ -55,13 +55,14 @@
       "docs/",
       "mod_test.ts",
       "ROADMAP.md",
+      "scripts/",
       "style/",
       "test/"
     ]
   },
   "tasks": {
     "ok": "deno fmt --check && deno lint && deno check && deno task test",
-    "test": "deno test -A",
+    "test": "rm -rf .coverage && deno test -A --coverage=.coverage",
     "bench": "deno bench -A",
     "gen:style": "deno run -A style/build.ts && deno fmt style.ts",
     "serve": "deno run -A test/server.ts"

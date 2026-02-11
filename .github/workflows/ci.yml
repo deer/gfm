@@ -31,3 +31,9 @@ jobs:
 
       - name: Test
         run: deno task test
+
+      - name: Coverage
+        run: deno run -A scripts/check-coverage.ts 90
+
+      - name: Benchmark
+        run: deno task bench

@@ -1,4 +1,9 @@
-import { assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
+import {
+  assertEquals,
+  assertMatch,
+  assertRejects,
+  assertStringIncludes,
+} from "@std/assert";
 import { describe, it } from "@std/testing/bdd";
 import type { Paragraph, Root as MdastRoot } from "mdast";
 import type { Element, Root as HastRoot } from "hast";
@@ -1107,5 +1112,364 @@ That's all folks.
       highlighter: "lowlight",
     });
     assertEquals(frontmatter, null);
+  });
+});
+
+// =============================================================================
+// XSS Sanitization Tests
+// =============================================================================
+
+describe("XSS sanitization", () => {
+  // ---- Script injection ----
+
+  it("strips <script> tags", async () => {
+    const html = await render('<script>alert("xss")</script>');
+    assertEquals(html.includes("<script"), false);
+  });
+
+  it("strips <script> with attributes", async () => {
+    const html = await render(
+      '<script type="text/javascript" src="evil.js"></script>',
+    );
+    assertEquals(html.includes("<script"), false);
+  });
+
+  it("strips <script> with encoded content", async () => {
+    const html = await render(
+      "<script>document.cookie</script>",
+    );
+    assertEquals(html.includes("<script"), false);
+  });
+
+  // ---- Event handlers ----
+
+  it("strips onclick handler", async () => {
+    const html = await render('<div onclick="alert(1)">click me</div>');
+    assertEquals(html.includes("onclick"), false);
+  });
+
+  it("strips onerror handler on img", async () => {
+    const html = await render(
+      '<img src="x" onerror="alert(1)">',
+    );
+    assertEquals(html.includes("onerror"), false);
+  });
+
+  it("strips onload handler on body", async () => {
+    const html = await render('<body onload="alert(1)">');
+    assertEquals(html.includes("onload"), false);
+  });
+
+  it("strips onmouseover handler", async () => {
+    const html = await render(
+      '<a href="#" onmouseover="alert(1)">hover</a>',
+    );
+    assertEquals(html.includes("onmouseover"), false);
+  });
+
+  it("strips onfocus/autofocus attack", async () => {
+    const html = await render(
+      '<input onfocus="alert(1)" autofocus>',
+    );
+    assertEquals(html.includes("onfocus"), false);
+  });
+
+  // ---- javascript: URIs ----
+
+  it("strips javascript: in link href", async () => {
+    const html = await render(
+      '<a href="javascript:alert(1)">click</a>',
+    );
+    assertEquals(html.includes("javascript:"), false);
+  });
+
+  it("strips javascript: with encoding in href", async () => {
+    const html = await render(
+      '<a href="&#106;avascript:alert(1)">click</a>',
+    );
+    assertEquals(html.includes("javascript:"), false);
+  });
+
+  it("strips javascript: in markdown link", async () => {
+    const html = await render("[click](javascript:alert(1))");
+    assertEquals(html.includes("javascript:"), false);
+  });
+
+  // ---- data: URIs ----
+
+  it("strips data: URI in img src", async () => {
+    const html = await render(
+      '<img src="data:text/html,<script>alert(1)</script>">',
+    );
+    assertEquals(html.includes("data:text/html"), false);
+  });
+
+  it("strips data: URI in link href", async () => {
+    const html = await render(
+      '<a href="data:text/html,<script>alert(1)</script>">click</a>',
+    );
+    assertEquals(html.includes("data:text/html"), false);
+  });
+
+  // ---- SVG-based XSS ----
+
+  it("strips <svg> with onload", async () => {
+    const html = await render('<svg onload="alert(1)">');
+    assertEquals(html.includes("onload"), false);
+  });
+
+  it("strips foreignObject in SVG", async () => {
+    const html = await render(
+      '<svg><foreignObject><body onload="alert(1)"></body></foreignObject></svg>',
+    );
+    assertEquals(html.includes("foreignObject"), false);
+    assertEquals(html.includes("onload"), false);
+  });
+
+  // ---- Style-based XSS ----
+
+  it("strips <style> tags", async () => {
+    const html = await render(
+      "<style>body { background: url(evil.js) }</style>",
+    );
+    assertEquals(html.includes("<style"), false);
+  });
+
+  it("strips style attribute with expression", async () => {
+    const html = await render(
+      '<div style="background:url(javascript:alert(1))">test</div>',
+    );
+    assertEquals(html.includes("javascript:"), false);
+  });
+
+  // ---- Form/meta injection ----
+
+  it("strips <form> tags", async () => {
+    const html = await render(
+      '<form action="https://evil.com"><input type="submit"></form>',
+    );
+    assertEquals(html.includes("<form"), false);
+  });
+
+  it("strips <meta> tags", async () => {
+    const html = await render(
+      '<meta http-equiv="refresh" content="0;url=https://evil.com">',
+    );
+    assertEquals(html.includes("<meta"), false);
+  });
+
+  it("strips <base> tags", async () => {
+    const html = await render('<base href="https://evil.com">');
+    assertEquals(html.includes("<base"), false);
+  });
+
+  // ---- Object/embed injection ----
+
+  it("strips <object> tags", async () => {
+    const html = await render(
+      '<object data="evil.swf" type="application/x-shockwave-flash"></object>',
+    );
+    assertEquals(html.includes("<object"), false);
+  });
+
+  it("strips <embed> tags", async () => {
+    const html = await render('<embed src="evil.swf">');
+    assertEquals(html.includes("<embed"), false);
+  });
+
+  // ---- iframes stripped by default ----
+
+  it("strips iframes by default", async () => {
+    const html = await render(
+      '<iframe src="https://evil.com"></iframe>',
+    );
+    assertEquals(html.includes("<iframe"), false);
+  });
+
+  // ---- Nested/obfuscated attempts ----
+
+  it("strips nested script in allowed tags", async () => {
+    const html = await render(
+      "<strong><script>alert(1)</script></strong>",
+    );
+    assertEquals(html.includes("<script"), false);
+    assertStringIncludes(html, "<strong>");
+  });
+
+  it("encodes quotes in markdown image alt text", async () => {
+    const html = await render('![x" onerror="alert(1)](image.png)');
+    // The quote is HTML-encoded so onerror can't break out of the alt attribute
+    assertEquals(html.includes('onerror="alert'), false);
+    assertStringIncludes(html, "&#x22;");
+  });
+
+  it("handles multiple XSS vectors in one document", async () => {
+    const md = `
+# Title
+
+<script>alert(1)</script>
+
+<img src=x onerror=alert(2)>
+
+[click](javascript:alert(3))
+
+<div onclick="alert(4)">text</div>
+
+<style>body{background:url(evil)}</style>
+    `.trim();
+    const html = await render(md);
+    assertEquals(html.includes("<script"), false);
+    assertEquals(html.includes("onerror"), false);
+    assertEquals(html.includes("javascript:"), false);
+    assertEquals(html.includes("onclick"), false);
+    assertEquals(html.includes("<style"), false);
+    // But legitimate content survives
+    assertStringIncludes(html, "<h1");
+    assertStringIncludes(html, "Title");
+  });
+
+  it("strips vbscript: URIs", async () => {
+    const html = await render('<a href="vbscript:alert(1)">click</a>');
+    assertEquals(html.includes("vbscript:"), false);
+  });
+
+  it("handles case variations in script tags", async () => {
+    const html = await render("<ScRiPt>alert(1)</ScRiPt>");
+    assertMatch(html, /^(?!.*<script).*$/is);
+  });
+
+  it("strips srcdoc on iframe even when allowed", async () => {
+    const html = await render(
+      '<iframe srcdoc="<script>alert(1)</script>"></iframe>',
+      { allowIframes: true },
+    );
+    assertEquals(html.includes("srcdoc"), false);
+  });
+});
+
+// =============================================================================
+// Plugin Error Handling Tests
+// =============================================================================
+
+describe("plugin error handling", () => {
+  it("propagates error from throwing remark plugin", async () => {
+    const throwingPlugin = () => () => {
+      throw new Error("remark plugin exploded");
+    };
+
+    await assertRejects(
+      () => render("# Hello", { remarkPlugins: [throwingPlugin] }),
+      Error,
+      "remark plugin exploded",
+    );
+  });
+
+  it("propagates error from throwing rehype plugin", async () => {
+    const throwingPlugin = () => () => {
+      throw new Error("rehype plugin exploded");
+    };
+
+    await assertRejects(
+      () => render("# Hello", { rehypePlugins: [throwingPlugin] }),
+      Error,
+      "rehype plugin exploded",
+    );
+  });
+
+  it("propagates error from async remark plugin", async () => {
+    const asyncThrowingPlugin = () => async () => {
+      await Promise.resolve();
+      throw new Error("async remark failure");
+    };
+
+    await assertRejects(
+      () => render("test", { remarkPlugins: [asyncThrowingPlugin] }),
+      Error,
+      "async remark failure",
+    );
+  });
+
+  it("propagates error from async rehype plugin", async () => {
+    const asyncThrowingPlugin = () => async () => {
+      await Promise.resolve();
+      throw new Error("async rehype failure");
+    };
+
+    await assertRejects(
+      () => render("test", { rehypePlugins: [asyncThrowingPlugin] }),
+      Error,
+      "async rehype failure",
+    );
+  });
+
+  it("handles plugin that returns undefined (no-op)", async () => {
+    const noopPlugin = () => () => undefined;
+
+    const html = await render("# Hello", { remarkPlugins: [noopPlugin] });
+    assertStringIncludes(html, "<h1");
+    assertStringIncludes(html, "Hello");
+  });
+
+  it("handles plugin that mutates tree to empty", async () => {
+    const emptyTreePlugin = () => (tree: MdastRoot) => {
+      tree.children = [];
+    };
+
+    const html = await render("# Hello **world**", {
+      remarkPlugins: [emptyTreePlugin],
+    });
+    // Should produce empty or minimal output, not crash
+    assertEquals(typeof html, "string");
+    assertEquals(html.includes("Hello"), false);
+  });
+
+  it("handles rehype plugin that empties tree", async () => {
+    const emptyTreePlugin = () => (tree: HastRoot) => {
+      tree.children = [];
+    };
+
+    const html = await render("# Hello", {
+      rehypePlugins: [emptyTreePlugin],
+    });
+    assertEquals(typeof html, "string");
+  });
+
+  it("handles plugin with options that throws", async () => {
+    const pluginWithOpts = (_opts: { shouldFail: boolean }) => () => {
+      throw new Error("configured to fail");
+    };
+
+    await assertRejects(
+      () =>
+        render("test", {
+          rehypePlugins: [[pluginWithOpts, { shouldFail: true }]],
+        }),
+      Error,
+      "configured to fail",
+    );
+  });
+
+  it("error in one plugin does not corrupt cache", async () => {
+    const throwOnce = (() => {
+      let called = false;
+      return () => () => {
+        if (!called) {
+          called = true;
+          throw new Error("first call fails");
+        }
+      };
+    })();
+
+    // First call fails
+    await assertRejects(
+      () => render("test", { remarkPlugins: [throwOnce] }),
+      Error,
+      "first call fails",
+    );
+
+    // Subsequent call without the plugin works fine
+    const html = await render("# Works");
+    assertStringIncludes(html, "<h1");
+    assertStringIncludes(html, "Works");
   });
 });
