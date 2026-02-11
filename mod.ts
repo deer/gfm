@@ -90,6 +90,8 @@ export interface RenderOptions {
    * ```
    */
   rehypePlugins?: PluginSpec[];
+  /** Render inline markdown without block-level `<p>` wrapping. Useful for single-line snippets in UI labels or table cells. */
+  inline?: boolean;
 }
 
 /** Table of contents entry */
@@ -405,6 +407,26 @@ function rehypeCodeBlocks() {
 }
 
 /**
+ * Rehype plugin to unwrap paragraph contents for inline rendering.
+ * Replaces `<p>` elements with their children so inline content
+ * is not wrapped in block-level tags.
+ */
+function rehypeUnwrapParagraphs() {
+  return (tree: HastRoot) => {
+    visit(
+      tree,
+      "element",
+      (node: Element, index: number | undefined, parent: unknown) => {
+        if (node.tagName !== "p" || index === undefined || !parent) return;
+        const parentEl = parent as HastRoot | Element;
+        parentEl.children.splice(index, 1, ...node.children);
+        return index;
+      },
+    );
+  };
+}
+
+/**
  * Helper to apply a plugin spec to a processor.
  * Uses Processor generic to maintain type safety while allowing plugin chaining.
  */
@@ -486,6 +508,11 @@ async function createProcessor(opts: RenderOptions): Promise<Pipeline> {
     processor = processor.use(rehypeSanitize, buildSchema(opts));
   }
 
+  // Inline mode: strip <p> wrappers
+  if (opts.inline) {
+    processor = processor.use(rehypeUnwrapParagraphs);
+  }
+
   return processor.use(rehypeStringify);
 }
 
@@ -504,6 +531,7 @@ function getCacheKey(opts: RenderOptions): string | null {
     disableHtmlSanitization: opts.disableHtmlSanitization ?? false,
     allowEmoji: opts.allowEmoji ?? true,
     baseUrl: opts.baseUrl ?? null,
+    inline: opts.inline ?? false,
   });
 }
 

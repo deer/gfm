@@ -667,6 +667,86 @@ describe("video/audio URL resolution", () => {
   });
 });
 
+describe("inline rendering", () => {
+  it("strips <p> wrapping", async () => {
+    const md = "Hello **world**";
+    const block = await render(md);
+    const inline = await render(md, { inline: true });
+
+    assertStringIncludes(block, "<p>");
+    assertEquals(inline.includes("<p>"), false);
+    assertEquals(inline.includes("</p>"), false);
+
+    // Both preserve formatting
+    assertStringIncludes(block, "<strong>world</strong>");
+    assertStringIncludes(inline, "<strong>world</strong>");
+  });
+
+  it("strips <p> from plain text", async () => {
+    const md = "Just text";
+    const block = await render(md);
+    const inline = await render(md, { inline: true });
+
+    assertStringIncludes(block, "<p>Just text</p>");
+    assertEquals(inline.trim(), "Just text");
+  });
+
+  it("preserves inline formatting without wrapping", async () => {
+    const md = "**bold** and _italic_ and `code`";
+    const block = await render(md);
+    const inline = await render(md, { inline: true });
+
+    assertStringIncludes(block, "<p>");
+    assertEquals(inline.includes("<p>"), false);
+
+    // Both have the same inline elements
+    for (const html of [block, inline]) {
+      assertStringIncludes(html, "<strong>bold</strong>");
+      assertStringIncludes(html, "<em>italic</em>");
+      assertStringIncludes(html, "<code>code</code>");
+    }
+  });
+
+  it("strips <p> from links", async () => {
+    const md = "[link](https://example.com)";
+    const block = await render(md);
+    const inline = await render(md, { inline: true });
+
+    assertStringIncludes(block, "<p>");
+    assertEquals(inline.includes("<p>"), false);
+    for (const html of [block, inline]) {
+      assertStringIncludes(html, 'href="https://example.com"');
+    }
+  });
+
+  it("strips <p> from multiple paragraphs", async () => {
+    const md = "First paragraph\n\nSecond paragraph";
+    const block = await render(md);
+    const inline = await render(md, { inline: true });
+
+    assertStringIncludes(block, "<p>First paragraph</p>");
+    assertStringIncludes(block, "<p>Second paragraph</p>");
+    assertEquals(inline.includes("<p>"), false);
+    assertStringIncludes(inline, "First paragraph");
+    assertStringIncludes(inline, "Second paragraph");
+  });
+
+  it("only strips <p>, not other block elements", async () => {
+    const md = "# Heading\n\nParagraph";
+    const block = await render(md);
+    const inline = await render(md, { inline: true });
+
+    // Both keep the heading
+    assertStringIncludes(block, "<h1");
+    assertStringIncludes(inline, "<h1");
+
+    // Only block keeps the <p>
+    assertStringIncludes(block, "<p>Paragraph</p>");
+    assertEquals(inline.includes("<p>"), false);
+    assertStringIncludes(inline, "Paragraph");
+  });
+});
+
 describe("emoji shortcodes", () => {
   it("converts :wave: to emoji", async () => {
     const html = await render("Hello :wave:");
