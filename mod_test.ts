@@ -1,4 +1,4 @@
-import { assertEquals, assertStringIncludes } from "@std/assert";
+import { assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
 import { describe, it } from "@std/testing/bdd";
 import type { Paragraph, Root as MdastRoot } from "mdast";
 import type { Element, Root as HastRoot } from "hast";
@@ -943,5 +943,38 @@ describe("custom plugins", () => {
     });
     assertStringIncludes(html, "class-a");
     assertStringIncludes(html, "class-b");
+  });
+});
+
+describe("baseUrl validation", () => {
+  it("rejects malformed baseUrl", async () => {
+    await assertRejects(
+      () => render("# Hello", { baseUrl: "not a url" }),
+      Error,
+      "Invalid baseUrl",
+    );
+  });
+
+  it("rejects empty-string baseUrl", async () => {
+    await assertRejects(
+      () => render("# Hello", { baseUrl: "" }),
+      Error,
+      "Invalid baseUrl",
+    );
+  });
+
+  it("accepts valid http baseUrl", async () => {
+    const html = await render("[link](./page)", {
+      baseUrl: "https://example.com/docs/",
+    });
+    assertStringIncludes(html, 'href="https://example.com/docs/page"');
+  });
+
+  it("includes the bad URL in the error message", async () => {
+    await assertRejects(
+      () => render("test", { baseUrl: "://broken" }),
+      Error,
+      "://broken",
+    );
   });
 });
