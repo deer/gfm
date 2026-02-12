@@ -104,7 +104,7 @@ point**: `@deer/gfm` (via deno.jsonc exports)
 | `PluginSpec` type                | Plugin or `[Plugin, ...opts]` tuple          |
 
 **Dependencies**: unified, remark-parse, remark-gfm, remark-frontmatter,
-remark-math, remark-emoji, remark-rehype, rehype-slug, rehype-autolink-headings,
+remark-math, gemoji, remark-rehype, rehype-slug, rehype-autolink-headings,
 rehype-sanitize, rehype-stringify, rehype-starry-night, rehype-highlight,
 rehype-katex, hast-util-to-string, hast-util-heading-rank, unist-util-visit,
 mdast-util-to-string, github-slugger, yaml
