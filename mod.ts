@@ -121,12 +121,22 @@ function buildSchema(opts: RenderOptions) {
   const schema = structuredClone(defaultSchema);
   schema.attributes ??= {};
 
-  // Allow heading IDs
+  // Disable ID clobbering — remark-gfm already prefixes footnote IDs with
+  // "user-content-", and the default clobberPrefix ("user-content-") would
+  // double-prefix them, breaking footnote ref/backref links. Removing the
+  // prefix also fixes heading autolinks (rehype-autolink-headings generates
+  // hrefs before sanitization, so they must match the final IDs).
+  schema.clobberPrefix = "";
+
+  // Allow heading IDs and sr-only class (used by footnote section heading)
   for (const h of ["h1", "h2", "h3", "h4", "h5", "h6"]) {
-    schema.attributes[h] = [...(schema.attributes[h] ?? []), "id"];
+    schema.attributes[h] = [...(schema.attributes[h] ?? []), "id", [
+      "className",
+      "sr-only",
+    ]];
   }
 
-  // Allow anchor links
+  // Allow anchor links (footnote attributes already in defaultSchema)
   schema.attributes["a"] = [
     ...(schema.attributes["a"] ?? []),
     "id",

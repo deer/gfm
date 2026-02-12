@@ -255,7 +255,8 @@ plugins during the same render pass):
 ### Markdown Parsing
 
 - Frontmatter only supports YAML (not TOML or JSON)
-- Footnotes are not supported by standard GFM
+- Footnotes are supported (remark-gfm v4 parses them; sanitization schema
+  whitelists the rendered elements)
 - Uses `github-slugger` for heading IDs (handles duplicates with `-1`, `-2`
   suffixes)
 
