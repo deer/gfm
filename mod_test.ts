@@ -484,10 +484,20 @@ describe("edge cases: special markdown patterns", () => {
     assertStringIncludes(html, 'href="https://example.com"');
   });
 
-  it("handles footnote-style text", async () => {
-    // Standard GFM doesn't support footnotes, should pass through
-    const html = await render("[^1]: footnote text");
-    assertEquals(typeof html, "string");
+  it("renders footnotes with ref and backref links", async () => {
+    const html = await render(
+      "Text with footnote[^1].\n\n[^1]: Footnote content.",
+    );
+    // Footnote reference: superscript link pointing to the footnote
+    assertStringIncludes(html, "<sup>");
+    assertStringIncludes(html, 'href="#user-content-fn-1"');
+    assertStringIncludes(html, 'data-footnote-ref=""');
+    // Footnote section
+    assertStringIncludes(html, 'data-footnotes=""');
+    assertStringIncludes(html, 'class="footnotes"');
+    // Backref link
+    assertStringIncludes(html, 'data-footnote-backref=""');
+    assertStringIncludes(html, 'href="#user-content-fnref-1"');
   });
 
   it("handles setext headings", async () => {
@@ -570,6 +580,76 @@ describe("code block wrapper", () => {
     assertStringIncludes(html, '<div class="highlight">');
     assertStringIncludes(html, '<div class="code-header">');
     assertStringIncludes(html, '<span class="code-lang">js</span>');
+  });
+});
+
+describe("footnotes", () => {
+  it("renders footnote ref and backref with matching IDs", async () => {
+    const md = "Text[^1] and more[^2].\n\n[^1]: First.\n[^2]: Second.";
+    const html = await render(md);
+
+    // Ref links point to footnote items
+    assertStringIncludes(html, 'href="#user-content-fn-1"');
+    assertStringIncludes(html, 'href="#user-content-fn-2"');
+    // Footnote items have matching IDs
+    assertStringIncludes(html, 'id="user-content-fn-1"');
+    assertStringIncludes(html, 'id="user-content-fn-2"');
+    // Backref links point back to ref IDs
+    assertStringIncludes(html, 'href="#user-content-fnref-1"');
+    assertStringIncludes(html, 'href="#user-content-fnref-2"');
+    // Ref elements have matching IDs
+    assertStringIncludes(html, 'id="user-content-fnref-1"');
+    assertStringIncludes(html, 'id="user-content-fnref-2"');
+  });
+
+  it("wraps footnotes in <section> with data-footnotes", async () => {
+    const html = await render("Text[^1].\n\n[^1]: Note.");
+    assertStringIncludes(html, "<section");
+    assertStringIncludes(html, 'data-footnotes=""');
+    assertStringIncludes(html, 'class="footnotes"');
+  });
+
+  it("renders footnote refs as superscript links", async () => {
+    const html = await render("Text[^1].\n\n[^1]: Note.");
+    assertStringIncludes(html, "<sup>");
+    assertStringIncludes(html, 'data-footnote-ref=""');
+  });
+
+  it("renders backref links with aria-label", async () => {
+    const html = await render("Text[^1].\n\n[^1]: Note.");
+    assertStringIncludes(html, 'data-footnote-backref=""');
+    assertStringIncludes(html, 'aria-label="Back to reference 1"');
+    assertStringIncludes(html, 'class="data-footnote-backref"');
+  });
+
+  it("preserves inline formatting in footnote content", async () => {
+    const html = await render(
+      "Text[^1].\n\n[^1]: Content with **bold** and `code`.",
+    );
+    assertStringIncludes(html, "<strong>bold</strong>");
+    assertStringIncludes(html, "<code>code</code>");
+  });
+
+  it("footnotes survive sanitization", async () => {
+    const withSanitize = await render("A[^1].\n\n[^1]: Note.");
+    const without = await render("A[^1].\n\n[^1]: Note.", {
+      disableHtmlSanitization: true,
+    });
+    // Both should have the footnote section
+    assertStringIncludes(withSanitize, 'data-footnotes=""');
+    assertStringIncludes(without, 'data-footnotes=""');
+    // Both should have working ref links
+    assertStringIncludes(withSanitize, 'href="#user-content-fn-1"');
+    assertStringIncludes(without, 'href="#user-content-fn-1"');
+  });
+
+  it("does not allow XSS in footnote content", async () => {
+    const html = await render(
+      'Text[^1].\n\n[^1]: <script>alert("xss")</script>',
+    );
+    assertStringIncludes(html, 'data-footnotes=""');
+    assertEquals(html.includes("<script>"), false);
+    assertEquals(html.includes("alert("), false);
   });
 });
 
