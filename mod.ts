@@ -32,7 +32,7 @@ import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkMath from "remark-math";
-import remarkEmoji from "remark-emoji";
+import { gemoji } from "gemoji";
 import remarkRehype from "remark-rehype";
 import rehypeSlug from "rehype-slug";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
@@ -47,7 +47,7 @@ import { toString as hastToString } from "hast-util-to-string";
 import { headingRank } from "hast-util-heading-rank";
 import { SKIP, visit } from "unist-util-visit";
 import { toString as mdastToString } from "mdast-util-to-string";
-import { parse as parseYaml } from "yaml";
+import { parse as parseYaml } from "@std/yaml";
 import GitHubSlugger from "github-slugger";
 
 import type { Heading, Root as MdastRoot } from "mdast";
@@ -448,6 +448,27 @@ function remarkExtractFrontmatter() {
   };
 }
 
+// Build name→emoji lookup from gemoji database
+const emojiMap = new Map<string, string>();
+for (const entry of gemoji) {
+  for (const name of entry.names) {
+    emojiMap.set(name, entry.emoji);
+  }
+}
+
+/**
+ * Remark plugin that replaces :emoji: shortcodes with unicode emoji.
+ */
+function remarkEmojify() {
+  return (tree: MdastRoot) => {
+    visit(tree, "text", (node: { value: string }) => {
+      node.value = node.value.replace(/:([+\w-]+):/g, (match, name) => {
+        return emojiMap.get(name) ?? match;
+      });
+    });
+  };
+}
+
 /**
  * Rehype plugin that extracts TOC entries and stores them on vfile.data.
  * Must run after rehypeSlug (so IDs exist) but before rehypeAutolinkHeadings
@@ -509,7 +530,7 @@ async function createProcessor(opts: RenderOptions): Promise<Pipeline> {
 
   // Emoji shortcodes (enabled by default)
   if (opts.allowEmoji !== false) {
-    processor = processor.use(remarkEmoji, { accessible: true });
+    processor = processor.use(remarkEmojify);
   }
 
   if (opts.allowMath) {

@@ -267,7 +267,7 @@ const html = await render(markdown, {
 2. `remark-gfm` (tables, strikethrough, etc.)
 3. `remark-frontmatter` (YAML frontmatter)
 4. Frontmatter extraction (stores on `vfile.data` for `renderWithMeta`)
-5. `remark-emoji` (if enabled)
+5. `gemoji` (if enabled)
 6. `remark-math` (if enabled)
 7. **Your `remarkPlugins`** ← custom
 8. `remark-rehype` (mdast → hast)
