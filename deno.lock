@@ -20,7 +20,6 @@
     "jsr:@std/internal@^1.0.12": "1.0.12",
     "jsr:@std/io@0.225": "0.225.0",
     "jsr:@std/io@0.225.0": "0.225.0",
-    "jsr:@std/path@*": "1.1.4",
     "jsr:@std/path@1": "1.1.4",
     "jsr:@std/path@^1.0.8": "1.1.4",
     "jsr:@std/path@^1.1.4": "1.1.4",
@@ -30,7 +29,6 @@
     "npm:@types/hast@^3.0.4": "3.0.4",
     "npm:@types/mdast@^4.0.4": "4.0.4",
     "npm:@wooorm/starry-night@^3.9.0": "3.9.0",
-    "npm:gemoji@8": "8.1.0",
     "npm:gemoji@^8.1.0": "8.1.0",
     "npm:github-slugger@2": "2.0.0",
     "npm:hast-util-heading-rank@3": "3.0.0",
@@ -147,8 +145,8 @@
     }
   },
   "npm": {
-    "@primer/octicons@19.21.2": {
-      "integrity": "sha512-SRTcpAZtKYh2266VQpAqNkXAQpPvYWk6dxggkHDzwI95NrE5mEzJ7cfFt/bSVbqDffKQ+tm7TEdLHoSjEcggfQ==",
+    "@primer/octicons@19.22.0": {
+      "integrity": "sha512-nWoh9PlE6u7xbiZF3KcUm3ktLpN2rQPt11trwp/t4EsKuYRNVWVbBp1LkCBsvZq7ScckNKUURLigIU0wS1FQdw==",
       "dependencies": [
         "object-assign"
       ]

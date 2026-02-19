@@ -137,6 +137,46 @@ describe("browser tests", () => {
     });
   });
 
+  it("renders line numbers on code blocks", async () => {
+    await browserTest("line-numbers", async (page) => {
+      // All pre elements should have data-line-numbers attribute
+      const lineNumberPres = await page.$$("pre[data-line-numbers]");
+      assertEquals(lineNumberPres.length, 3);
+
+      // Verify per-block line counts: 6 (typescript), 7 (python), 3 (plain)
+      const lineCounts = await page.evaluate(() => {
+        const pres = document.querySelectorAll("pre[data-line-numbers]");
+        return Array.from(pres).map(
+          (pre) => pre.querySelectorAll("code .line").length,
+        );
+      });
+      assertEquals(lineCounts, [6, 7, 3]);
+
+      // Total .line spans across all blocks
+      const lineSpans = await page.$$("pre[data-line-numbers] code .line");
+      assertEquals(lineSpans.length, 16);
+
+      // ::before pseudo-elements should render with counter content and user-select: none
+      const pseudoStyle = await page.evaluate(() => {
+        const line = document.querySelector(
+          "pre[data-line-numbers] code .line",
+        );
+        if (!line) return null;
+        const s = getComputedStyle(line, "::before");
+        return {
+          content: s.content,
+          userSelect: s.userSelect || s.webkitUserSelect,
+          display: s.display,
+          textAlign: s.textAlign,
+        };
+      });
+      assertEquals(pseudoStyle?.content, "counter(line)");
+      assertEquals(pseudoStyle?.userSelect, "none");
+      assertEquals(pseudoStyle?.display, "inline-block");
+      assertEquals(pseudoStyle?.textAlign, "right");
+    });
+  });
+
   it("renders code blocks with headers and wrappers", async () => {
     await browserTest("codeblocks", async (page) => {
       // Page uses our generated CSS for code block styling

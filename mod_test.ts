@@ -1553,3 +1553,71 @@ describe("plugin error handling", () => {
     assertStringIncludes(html, "Works");
   });
 });
+
+describe("lineNumbers", () => {
+  it("wraps each line in span.line when enabled", async () => {
+    const html = await render("```ts\nconst x = 1;\nconst y = 2;\n```", {
+      lineNumbers: true,
+    });
+    assertStringIncludes(html, '<span class="line">');
+    assertStringIncludes(html, "data-line-numbers");
+    // Should have 2 lines
+    const lineCount = (html.match(/class="line"/g) || []).length;
+    assertEquals(lineCount, 2);
+  });
+
+  it("does not add line spans when disabled (default)", async () => {
+    const html = await render("```ts\nconst x = 1;\n```");
+    assertEquals(html.includes('class="line"'), false);
+    assertEquals(html.includes("data-line-numbers"), false);
+  });
+
+  it("handles single-line code blocks", async () => {
+    const html = await render("```\nhello\n```", { lineNumbers: true });
+    const lineCount = (html.match(/class="line"/g) || []).length;
+    assertEquals(lineCount, 1);
+  });
+
+  it("handles empty code blocks", async () => {
+    const html = await render("```\n\n```", { lineNumbers: true });
+    assertStringIncludes(html, '<span class="line">');
+  });
+
+  it("handles code with no language (no syntax highlighting)", async () => {
+    const html = await render("```\nplain text\nline 2\n```", {
+      lineNumbers: true,
+      highlighter: "none",
+    });
+    assertStringIncludes(html, '<span class="line">');
+    const lineCount = (html.match(/class="line"/g) || []).length;
+    assertEquals(lineCount, 2);
+  });
+
+  it("works with lowlight highlighter", async () => {
+    const html = await render("```js\nconst x = 1;\nconst y = 2;\n```", {
+      lineNumbers: true,
+      highlighter: "lowlight",
+    });
+    assertStringIncludes(html, '<span class="line">');
+    assertStringIncludes(html, "data-line-numbers");
+    const lineCount = (html.match(/class="line"/g) || []).length;
+    assertEquals(lineCount, 2);
+  });
+
+  it("preserves syntax highlighting spans inside lines", async () => {
+    const html = await render("```ts\nconst x = 1;\n```", {
+      lineNumbers: true,
+    });
+    // Should still have syntax tokens inside the line span
+    assertStringIncludes(html, 'class="pl-k"');
+    assertStringIncludes(html, 'class="pl-c1"');
+  });
+
+  it("handles multi-line code with many lines", async () => {
+    const lines = Array.from({ length: 20 }, (_, i) => `line ${i + 1}`);
+    const md = "```\n" + lines.join("\n") + "\n```";
+    const html = await render(md, { lineNumbers: true });
+    const lineCount = (html.match(/class="line"/g) || []).length;
+    assertEquals(lineCount, 20);
+  });
+});

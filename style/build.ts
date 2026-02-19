@@ -236,6 +236,11 @@ const GFM_COMPONENT_CSS =
   `.dark .markdown-body .markdown-alert-caution{border-left-color:#f85149}` +
   `.dark .markdown-body .markdown-alert-caution .markdown-alert-title{color:#f85149}`;
 
+// Line numbers — CSS counter-based, scoped behind pre[data-line-numbers]
+const LINE_NUMBERS_CSS = `pre[data-line-numbers] code{counter-reset:line}` +
+  `pre[data-line-numbers] .line{counter-increment:line}` +
+  `pre[data-line-numbers] .line::before{content:counter(line);display:inline-block;width:2.5em;margin-right:1em;text-align:right;color:var(--fgColor-muted,var(--color-fg-muted));user-select:none;-webkit-user-select:none;opacity:.5}`;
+
 // ---------------------------------------------------------------------------
 // Main build
 // ---------------------------------------------------------------------------
@@ -325,11 +330,14 @@ export async function build(): Promise<void> {
   // Component overrides (headings, links, alerts, etc.)
   const gfmComponentCss = `/* GFM component styles */\n` + GFM_COMPONENT_CSS;
 
-  // Assembly order: variables → theme → remap → markdown → starry-night → components
+  // Line number styles
+  const lineNumbersCss = `/* Line numbers */\n` + LINE_NUMBERS_CSS;
+
+  // Assembly order: variables → theme → remap → markdown → starry-night → components → line numbers
   const fullCss = variablesCss + "\n" + gfmThemeCss + "\n" + gfmRemapCss +
     "\n" + cleanMarkdownCss + "\n" +
     `/* Starry-night syntax highlighting (pl- prefix) */\n` + STARRY_NIGHT_CSS +
-    "\n" + gfmComponentCss;
+    "\n" + gfmComponentCss + "\n" + lineNumbersCss;
 
   // --- 5. Fetch and process KaTeX CSS ---
 
