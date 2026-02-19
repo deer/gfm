@@ -28,7 +28,7 @@ Or add to your `deno.json`:
 ```json
 {
   "imports": {
-    "@deer/gfm": "jsr:@deer/gfm@^0.0.4"
+    "@deer/gfm": "jsr:@deer/gfm@^0.0.5"
   }
 }
 ```
