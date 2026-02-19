@@ -1,17 +1,52 @@
-name: Publish
+name: Release
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
 
 jobs:
-  publish:
+  release:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       id-token: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check for version change
+        id: version
+        run: |
+          VERSION=$(jq -r .version deno.jsonc)
+          TAG="${VERSION}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists, skipping release"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "New version detected: $VERSION"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+            echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: denoland/setup-deno@v2
+        if: steps.version.outputs.changed == 'true'
+
       - name: Install dependencies
+        if: steps.version.outputs.changed == 'true'
         run: deno install --frozen
-      - run: deno publish
+
+      - name: Publish to JSR
+        if: steps.version.outputs.changed == 'true'
+        run: deno publish
+
+      - name: Create GitHub release
+        if: steps.version.outputs.changed == 'true'
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --title "${{ steps.version.outputs.tag }}" \
+            --generate-notes \
+            --draft
+        env:
+          GH_TOKEN: ${{ github.token }}
