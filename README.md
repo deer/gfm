@@ -13,6 +13,7 @@ GitHub Flavored Markdown rendering for Deno, built on the
 - **YAML frontmatter** — Parsed and returned separately
 - **Math rendering** — KaTeX support for `$inline$` and `$$display$$` math
 - **Anchor links** — GitHub-style heading links with SVG icons
+- **Line numbers** — Optional numbered lines on code blocks via CSS counters
 - **HTML sanitization** — Safe by default, blocks XSS vectors
 - **Processor caching** — Reuses compiled pipelines for performance
 
@@ -53,7 +54,7 @@ const html = await render(markdown: string, options?: RenderOptions): Promise<st
 
 **Example:**
 
-```ts
+````ts
 // Basic rendering
 const html = await render("# Hello **world**");
 
@@ -69,10 +70,13 @@ const html = await render(
   { allowIframes: true },
 );
 
+// Line numbers on code blocks
+const html = await render("```ts\nconst x = 1;\n```", { lineNumbers: true });
+
 // Inline rendering (no <p> wrapping, for UI labels/table cells)
 const label = await render("**Status:** Active", { inline: true });
 // <strong>Status:</strong> Active
-```
+````
 
 ### `renderWithMeta(markdown, options?)`
 
@@ -211,6 +215,7 @@ clearCache(): void
 | `baseUrl`                 | `string`                                     | —                | Base URL for relative links             |
 | `remarkPlugins`           | `PluginSpec[]`                               | —                | Custom remark plugins                   |
 | `rehypePlugins`           | `PluginSpec[]`                               | —                | Custom rehype plugins                   |
+| `lineNumbers`             | `boolean`                                    | `false`          | Show line numbers on code blocks        |
 | `inline`                  | `boolean`                                    | `false`          | Strip `<p>` wrapping for inline use     |
 | `disableHtmlSanitization` | `boolean`                                    | `false`          | Disable sanitization (dangerous!)       |
 

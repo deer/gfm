@@ -74,6 +74,8 @@ export interface RenderOptions {
   disableHtmlSanitization?: boolean;
   /** Enable emoji shortcodes (e.g., :wave: → 👋). Default: true */
   allowEmoji?: boolean;
+  /** Enable line numbers on code blocks. Default: false */
+  lineNumbers?: boolean;
   /**
    * Custom remark plugins to run after built-in plugins (before remark-rehype).
    * @example
@@ -151,7 +153,7 @@ function buildSchema(opts: RenderOptions) {
   ]];
 
   // Build span className pattern - syntax highlighting + optionally KaTeX
-  const spanClassPatterns = ["pl-", "hljs-", "code-lang"];
+  const spanClassPatterns = ["pl-", "hljs-", "code-lang", "line"];
   if (opts.allowMath) {
     // KaTeX class prefixes
     spanClassPatterns.push(
@@ -197,7 +199,11 @@ function buildSchema(opts: RenderOptions) {
     schema.attributes["span"].push("style", "ariaHidden");
   }
 
-  schema.attributes["pre"] = [...(schema.attributes["pre"] ?? []), "className"];
+  schema.attributes["pre"] = [
+    ...(schema.attributes["pre"] ?? []),
+    "className",
+    "dataLineNumbers",
+  ];
   schema.attributes["div"] = [...(schema.attributes["div"] ?? []), [
     "className",
     /^(highlight|code-header|markdown-)/,
@@ -419,6 +425,91 @@ function rehypeCodeBlocks() {
 }
 
 /**
+ * Rehype plugin that wraps each line of code inside `<pre><code>` in a
+ * `<span class="line">`, enabling CSS-based line numbers via counters.
+ *
+ * The algorithm walks the children of every `<code>` element inside a `<pre>`,
+ * splitting text nodes on newline characters and grouping consecutive nodes
+ * into per-line `<span class="line">` wrappers.
+ */
+function rehypeLineNumbers() {
+  return (tree: HastRoot) => {
+    visit(tree, "element", (pre: Element) => {
+      if (pre.tagName !== "pre") return;
+
+      const code = pre.children.find(
+        (c): c is Element => c.type === "element" && c.tagName === "code",
+      );
+      if (!code) return;
+
+      // Flatten code children into lines by splitting on \n
+      type HastChild = Element | { type: "text"; value: string };
+      const lines: HastChild[][] = [[]];
+
+      for (const child of code.children as HastChild[]) {
+        if (child.type === "text") {
+          const parts = child.value.split("\n");
+          for (let i = 0; i < parts.length; i++) {
+            if (i > 0) lines.push([]);
+            if (parts[i]) {
+              lines[lines.length - 1].push({ type: "text", value: parts[i] });
+            }
+          }
+        } else if (child.type === "element") {
+          // Span may contain text with newlines — need to split those too
+          const text = hastToString(child);
+          if (text.includes("\n")) {
+            // Split the element across lines. For simplicity, split into
+            // text segments and re-wrap each in a clone of the element.
+            const parts = text.split("\n");
+            for (let i = 0; i < parts.length; i++) {
+              if (i > 0) lines.push([]);
+              if (parts[i]) {
+                lines[lines.length - 1].push({
+                  type: "element",
+                  tagName: child.tagName,
+                  properties: { ...child.properties },
+                  children: [{ type: "text", value: parts[i] }],
+                } as Element);
+              }
+            }
+          } else {
+            lines[lines.length - 1].push(child);
+          }
+        } else {
+          // Other node types (comments, etc.) — keep on current line
+          lines[lines.length - 1].push(child as HastChild);
+        }
+      }
+
+      // Drop trailing empty line (code blocks typically end with \n)
+      if (
+        lines.length > 1 &&
+        lines[lines.length - 1].length === 0
+      ) {
+        lines.pop();
+      }
+
+      // Wrap each line in <span class="line">
+      code.children = lines.map((children) => ({
+        type: "element" as const,
+        tagName: "span",
+        properties: { className: ["line"] },
+        children: children.length > 0
+          ? [...children, { type: "text" as const, value: "\n" }]
+          : [{ type: "text" as const, value: "\n" }],
+      }));
+
+      // Add data attribute to pre for CSS targeting
+      pre.properties = pre.properties || {};
+      pre.properties["dataLineNumbers"] = "";
+
+      return SKIP;
+    });
+  };
+}
+
+/**
  * Rehype plugin to unwrap paragraph contents for inline rendering.
  * Replaces `<p>` elements with their children so inline content
  * is not wrapped in block-level tags.
@@ -599,6 +690,11 @@ async function createProcessor(opts: RenderOptions): Promise<Pipeline> {
   // Wrap code blocks in .highlight with optional language header
   processor = processor.use(rehypeCodeBlocks);
 
+  // Line numbers (after code block wrapping + highlighting)
+  if (opts.lineNumbers) {
+    processor = processor.use(rehypeLineNumbers);
+  }
+
   // Custom rehype plugins (after highlighting, before sanitization)
   if (opts.rehypePlugins) {
     for (const plugin of opts.rehypePlugins) {
@@ -636,6 +732,7 @@ function getCacheKey(opts: RenderOptions): string | null {
     allowEmoji: opts.allowEmoji ?? true,
     baseUrl: opts.baseUrl ?? null,
     inline: opts.inline ?? false,
+    lineNumbers: opts.lineNumbers ?? false,
   });
 }
 
