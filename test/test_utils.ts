@@ -1,5 +1,5 @@
 import { launch, type Page } from "@astral/astral";
-import { render, type RenderOptions } from "../mod.ts";
+import { render, type RenderOptions } from "../lowlight.ts";
 import { COMBINED_CSS } from "../style.ts";
 
 type TestCase = {
