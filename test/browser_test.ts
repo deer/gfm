@@ -186,8 +186,9 @@ describe("browser tests", () => {
       assertEquals(highlights.length, 4); // 3 with lang + 1 without
 
       // Blocks with a language get a .code-header
+      // (lowlight detect: true auto-detects language on unlabeled blocks too)
       const codeHeaders = await page.$$(".markdown-body .code-header");
-      assertEquals(codeHeaders.length, 3); // typescript, python, bash
+      assertEquals(codeHeaders.length, 4);
 
       // Each header has a .code-lang span with the language name
       const langLabels = await page.evaluate(() => {
@@ -196,7 +197,9 @@ describe("browser tests", () => {
         );
         return Array.from(spans).map((s) => s.textContent);
       });
-      assertEquals(langLabels, ["typescript", "python", "bash"]);
+      // First 3 are explicit, last is auto-detected by lowlight
+      assertEquals(langLabels.slice(0, 3), ["typescript", "python", "bash"]);
+      assertEquals(langLabels.length, 4);
 
       // Code header has styled properties (border, padding, flex layout)
       const headerStyles = await page.evaluate(() => {
@@ -226,11 +229,11 @@ describe("browser tests", () => {
       assertEquals(preRadius?.topLeft, "0px");
       assertEquals(preRadius?.topRight, "0px");
 
-      // The block without a language has no header
+      // With lowlight auto-detection, even the unlabeled block gets a header
       const lastHighlight = await page.evaluate(() => {
         const all = document.querySelectorAll(".markdown-body .highlight");
         const last = all[all.length - 1];
-        return last?.querySelector(".code-header") === null;
+        return last?.querySelector(".code-header") !== null;
       });
       assertEquals(lastHighlight, true);
     });

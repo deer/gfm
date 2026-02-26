@@ -2,13 +2,15 @@
  * @module
  * GitHub Flavored Markdown rendering for Deno.
  *
- * Built on the unified ecosystem with two syntax highlighting options:
- * - `starry-night`: GitHub's actual highlighter (accurate, heavier)
- * - `lowlight`: highlight.js-based (lighter, faster)
+ * Import from a highlighter-specific entry point for syntax highlighting:
+ * - `@deer/gfm/lowlight` — highlight.js-based (lighter, faster)
+ * - `@deer/gfm/starry-night` — GitHub's actual highlighter (accurate, heavier)
+ *
+ * Or import from `@deer/gfm` directly for rendering without syntax highlighting.
  *
  * @example
  * ```ts
- * import { render } from "@deer/gfm";
+ * import { render } from "@deer/gfm/lowlight";
  *
  * const html = await render("# Hello **world**");
  * ```
@@ -38,24 +40,18 @@ import rehypeSlug from "rehype-slug";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeStringify from "rehype-stringify";
-import rehypeStarryNight from "rehype-starry-night";
-import rehypeHighlight from "rehype-highlight";
 import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
 import { rehypeGithubAlerts } from "rehype-github-alerts";
 import { toString as hastToString } from "hast-util-to-string";
 import { headingRank } from "hast-util-heading-rank";
 import { SKIP, visit } from "unist-util-visit";
-import { toString as mdastToString } from "mdast-util-to-string";
 import { parse as parseYaml } from "@std/yaml";
-import GitHubSlugger from "github-slugger";
 
-import type { Heading, Root as MdastRoot } from "mdast";
+import type { TocEntry } from "./parse.ts";
+import type { Root as MdastRoot } from "mdast";
 import type { Element, Root as HastRoot } from "hast";
 import type { Pluggable, Plugin } from "unified";
-
-/** Syntax highlighting engine */
-export type Highlighter = "starry-night" | "lowlight" | "none";
 
 /** A unified plugin with optional settings */
 export type PluginSpec = Pluggable | [Plugin, ...unknown[]];
@@ -64,8 +60,8 @@ export type PluginSpec = Pluggable | [Plugin, ...unknown[]];
 export interface RenderOptions {
   /** Base URL for resolving relative links and images (e.g., "https://example.com/docs/") */
   baseUrl?: string;
-  /** Syntax highlighter: "starry-night" (default), "lowlight", or "none" */
-  highlighter?: Highlighter;
+  /** Rehype plugin for syntax highlighting. Use `@deer/gfm/lowlight` or `@deer/gfm/starry-night` entry points instead of setting this directly. */
+  highlighter?: PluginSpec;
   /** Enable KaTeX math rendering */
   allowMath?: boolean;
   /** Enable iframes in output */
@@ -96,16 +92,6 @@ export interface RenderOptions {
   rehypePlugins?: PluginSpec[];
   /** Render inline markdown without block-level `<p>` wrapping. Useful for single-line snippets in UI labels or table cells. */
   inline?: boolean;
-}
-
-/** Table of contents entry */
-export interface TocEntry {
-  /** Heading text */
-  text: string;
-  /** Heading level (1-6) */
-  depth: number;
-  /** Slug/ID for linking */
-  slug: string;
 }
 
 /** Result of rendering with metadata */
@@ -621,7 +607,7 @@ function validateBaseUrl(baseUrl: string | undefined): void {
 }
 
 // Create the unified processor pipeline
-async function createProcessor(opts: RenderOptions): Promise<Pipeline> {
+function createProcessor(opts: RenderOptions): Pipeline {
   validateBaseUrl(opts.baseUrl);
   let processor: Pipeline = unified()
     .use(remarkParse)
@@ -660,26 +646,9 @@ async function createProcessor(opts: RenderOptions): Promise<Pipeline> {
     // Resolve relative URLs if baseUrl is provided
     .use(rehypeResolveUrls, { baseUrl: opts.baseUrl });
 
-  // Add syntax highlighter
-  const highlighter = opts.highlighter ?? "starry-night";
-  if (highlighter === "starry-night") {
-    let starryNight;
-    try {
-      const { createStarryNight, common } = await import(
-        "@wooorm/starry-night"
-      );
-      starryNight = await createStarryNight(common);
-    } catch (cause) {
-      throw new Error(
-        'Failed to load syntax highlighter "starry-night". ' +
-          "Make sure @wooorm/starry-night is installed, or use " +
-          '{ highlighter: "lowlight" } as a lighter alternative.',
-        { cause },
-      );
-    }
-    processor = processor.use(rehypeStarryNight, { starryNight });
-  } else if (highlighter === "lowlight") {
-    processor = processor.use(rehypeHighlight, { detect: true });
+  // Add syntax highlighter plugin (provided by entry points like @deer/gfm/lowlight)
+  if (opts.highlighter) {
+    processor = applyPlugin(processor, opts.highlighter);
   }
 
   // Math rendering
@@ -717,7 +686,13 @@ async function createProcessor(opts: RenderOptions): Promise<Pipeline> {
 
 // Processor cache (only used when no custom plugins are provided)
 const MAX_CACHE_SIZE = 10;
-const processorCache = new Map<string, Promise<Pipeline>>();
+const processorCache = new Map<string, Pipeline>();
+
+function getHighlighterName(highlighter: RenderOptions["highlighter"]): string {
+  if (!highlighter) return "none";
+  const fn = Array.isArray(highlighter) ? highlighter[0] : highlighter;
+  return (fn as { name?: string }).name ?? "unknown";
+}
 
 function getCacheKey(opts: RenderOptions): string | null {
   // Don't cache when custom plugins are used (they may have state)
@@ -725,7 +700,7 @@ function getCacheKey(opts: RenderOptions): string | null {
     return null;
   }
   return JSON.stringify({
-    highlighter: opts.highlighter ?? "starry-night",
+    highlighter: getHighlighterName(opts.highlighter),
     allowMath: opts.allowMath ?? false,
     allowIframes: opts.allowIframes ?? false,
     disableHtmlSanitization: opts.disableHtmlSanitization ?? false,
@@ -736,7 +711,7 @@ function getCacheKey(opts: RenderOptions): string | null {
   });
 }
 
-function getProcessor(opts: RenderOptions): Promise<Pipeline> {
+function getProcessor(opts: RenderOptions): Pipeline {
   const key = getCacheKey(opts);
 
   // No caching for custom plugins
@@ -773,16 +748,15 @@ export function clearCache(): void {
 
 /**
  * Pre-warm the processor cache for the given options.
- * Defaults to `{}` which triggers starry-night initialization (the primary use case).
  *
  * @example
  * ```ts
- * await warmup(); // pre-warm default starry-night processor
- * await warmup({ highlighter: "lowlight" }); // pre-warm lowlight
+ * import { warmup } from "@deer/gfm/lowlight";
+ * await warmup(); // pre-warm lowlight processor
  * ```
  */
-export async function warmup(opts: RenderOptions = {}): Promise<void> {
-  await getProcessor(opts);
+export function warmup(opts: RenderOptions = {}): void {
+  getProcessor(opts);
 }
 
 /**
@@ -790,19 +764,15 @@ export async function warmup(opts: RenderOptions = {}): Promise<void> {
  *
  * @example
  * ```ts
+ * import { render } from "@deer/gfm/lowlight";
  * const html = await render("# Hello **world**");
- * ```
- *
- * @example With lowlight (faster, lighter)
- * ```ts
- * const html = await render(code, { highlighter: "lowlight" });
  * ```
  */
 export async function render(
   markdown: string,
   opts: RenderOptions = {},
 ): Promise<string> {
-  const processor = await getProcessor(opts);
+  const processor = getProcessor(opts);
   const result = await processor.process(markdown);
   return String(result);
 }
@@ -823,7 +793,7 @@ export async function renderWithMeta(
   markdown: string,
   opts: RenderOptions = {},
 ): Promise<RenderResult> {
-  const processor = await getProcessor(opts);
+  const processor = getProcessor(opts);
   const result = await processor.process(markdown);
   return {
     html: String(result),
@@ -832,46 +802,8 @@ export async function renderWithMeta(
   };
 }
 
-/**
- * Extract table of contents from markdown (lightweight, no full render).
- */
-export function extractToc(markdown: string): TocEntry[] {
-  const mdast = unified()
-    .use(remarkParse)
-    .use(remarkGfm)
-    .use(remarkFrontmatter, ["yaml"])
-    .parse(markdown) as MdastRoot;
-
-  const toc: TocEntry[] = [];
-  const slugger = new GitHubSlugger();
-
-  visit(mdast, "heading", (node: Heading) => {
-    const text = mdastToString(node);
-    toc.push({ text, depth: node.depth, slug: slugger.slug(text) });
-  });
-
-  return toc;
-}
-
-/**
- * Parse YAML frontmatter from markdown.
- */
-export function parseFrontmatter(
-  markdown: string,
-): Record<string, unknown> | null {
-  const mdast = unified()
-    .use(remarkParse)
-    .use(remarkFrontmatter, ["yaml"])
-    .parse(markdown) as MdastRoot;
-
-  for (const node of mdast.children) {
-    if (node.type === "yaml") {
-      try {
-        return parseYaml(node.value) as Record<string, unknown>;
-      } catch {
-        return null;
-      }
-    }
-  }
-  return null;
-}
+// Re-export lightweight parsing functions and types from parse.ts for backwards
+// compat. Prefer importing from "@deer/gfm/parse" directly to avoid pulling in
+// the full rendering pipeline.
+export { extractToc, parseFrontmatter } from "./parse.ts";
+export type { TocEntry } from "./parse.ts";

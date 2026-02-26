@@ -16,6 +16,12 @@ import {
   renderWithMeta,
   warmup,
 } from "./mod.ts";
+import {
+  render as renderLowlight,
+  renderWithMeta as renderWithMetaLowlight,
+  warmup as warmupLowlight,
+} from "./lowlight.ts";
+import { render as renderStarryNight } from "./starry-night.ts";
 
 describe("render", () => {
   it("renders basic markdown", async () => {
@@ -53,24 +59,20 @@ describe("render", () => {
     assertStringIncludes(html, "octicon-link");
   });
 
-  it("renders code with starry-night by default", async () => {
-    const html = await render("```js\nconst x = 1;\n```");
+  it("renders code with starry-night entry point", async () => {
+    const html = await renderStarryNight("```js\nconst x = 1;\n```");
     assertStringIncludes(html, "<pre>");
     assertStringIncludes(html, "<code");
   });
 
-  it("renders code with lowlight", async () => {
-    const html = await render("```js\nconst x = 1;\n```", {
-      highlighter: "lowlight",
-    });
+  it("renders code with lowlight entry point", async () => {
+    const html = await renderLowlight("```js\nconst x = 1;\n```");
     assertStringIncludes(html, "<pre>");
     assertStringIncludes(html, "<code");
   });
 
   it("renders code with no highlighting", async () => {
-    const html = await render("```js\nconst x = 1;\n```", {
-      highlighter: "none",
-    });
+    const html = await render("```js\nconst x = 1;\n```");
     assertStringIncludes(html, "<pre>");
     assertStringIncludes(html, "const x = 1;");
   });
@@ -265,7 +267,7 @@ describe("edge cases: very large documents", () => {
       (_, i) => `const line${i} = ${i};`,
     );
     const md = "```js\n" + codeLines.join("\n") + "\n```";
-    const html = await render(md, { highlighter: "lowlight" });
+    const html = await renderLowlight(md);
     assertStringIncludes(html, "<pre>");
     assertStringIncludes(html, "line999");
   });
@@ -406,9 +408,7 @@ describe("edge cases: unicode", () => {
   });
 
   it("handles unicode in code blocks", async () => {
-    const html = await render("```\nconst greeting = '你好';\n```", {
-      highlighter: "lowlight",
-    });
+    const html = await renderLowlight("```\nconst greeting = '你好';\n```");
     assertStringIncludes(html, "你好");
   });
 
@@ -517,7 +517,7 @@ describe("edge cases: special markdown patterns", () => {
 
 describe("code block wrapper", () => {
   it("wraps fenced code with language in .highlight with header (starry-night)", async () => {
-    const html = await render("```js\nconst x = 1;\n```");
+    const html = await renderStarryNight("```js\nconst x = 1;\n```");
     assertStringIncludes(html, '<div class="highlight">');
     assertStringIncludes(html, '<div class="code-header">');
     assertStringIncludes(html, '<span class="code-lang">js</span>');
@@ -525,9 +525,7 @@ describe("code block wrapper", () => {
   });
 
   it("wraps fenced code with language in .highlight with header (lowlight)", async () => {
-    const html = await render("```js\nconst x = 1;\n```", {
-      highlighter: "lowlight",
-    });
+    const html = await renderLowlight("```js\nconst x = 1;\n```");
     assertStringIncludes(html, '<div class="highlight">');
     assertStringIncludes(html, '<div class="code-header">');
     assertStringIncludes(html, '<span class="code-lang">js</span>');
@@ -535,9 +533,7 @@ describe("code block wrapper", () => {
   });
 
   it("wraps fenced code with language in .highlight with header (none)", async () => {
-    const html = await render("```js\nconst x = 1;\n```", {
-      highlighter: "none",
-    });
+    const html = await render("```js\nconst x = 1;\n```");
     assertStringIncludes(html, '<div class="highlight">');
     assertStringIncludes(html, '<div class="code-header">');
     assertStringIncludes(html, '<span class="code-lang">js</span>');
@@ -545,9 +541,7 @@ describe("code block wrapper", () => {
   });
 
   it("wraps fenced code without language in .highlight without header", async () => {
-    const html = await render("```\nconst x = 1;\n```", {
-      highlighter: "none",
-    });
+    const html = await render("```\nconst x = 1;\n```");
     assertStringIncludes(html, '<div class="highlight">');
     assertEquals(html.includes("code-header"), false);
     assertEquals(html.includes("code-lang"), false);
@@ -555,18 +549,14 @@ describe("code block wrapper", () => {
   });
 
   it("wraps indented code blocks in .highlight without header", async () => {
-    const html = await render("    const x = 1;\n    const y = 2;", {
-      highlighter: "none",
-    });
+    const html = await render("    const x = 1;\n    const y = 2;");
     assertStringIncludes(html, '<div class="highlight">');
     assertEquals(html.includes("code-header"), false);
     assertStringIncludes(html, "<pre>");
   });
 
   it("wrapper survives with sanitization enabled", async () => {
-    const html = await render("```js\nconst x = 1;\n```", {
-      highlighter: "none",
-    });
+    const html = await render("```js\nconst x = 1;\n```");
     assertStringIncludes(html, '<div class="highlight">');
     assertStringIncludes(html, '<div class="code-header">');
     assertStringIncludes(html, '<span class="code-lang">js</span>');
@@ -574,7 +564,6 @@ describe("code block wrapper", () => {
 
   it("wrapper survives with sanitization disabled", async () => {
     const html = await render("```js\nconst x = 1;\n```", {
-      highlighter: "none",
       disableHtmlSanitization: true,
     });
     assertStringIncludes(html, '<div class="highlight">');
@@ -1095,26 +1084,23 @@ describe("clearCache", () => {
 });
 
 describe("warmup", () => {
-  it("pre-warms default (starry-night) processor", async () => {
+  it("pre-warms default (no highlighter) processor", async () => {
     clearCache();
-    await warmup();
-    // Subsequent render should succeed
+    warmup();
     const html = await render("```js\nconst x = 1;\n```");
     assertStringIncludes(html, "<pre>");
   });
 
-  it("pre-warms specific highlighter config", async () => {
+  it("pre-warms lowlight config", async () => {
     clearCache();
-    await warmup({ highlighter: "lowlight" });
-    const html = await render("```js\nconst x = 1;\n```", {
-      highlighter: "lowlight",
-    });
+    warmupLowlight();
+    const html = await renderLowlight("```js\nconst x = 1;\n```");
     assertStringIncludes(html, "<pre>");
   });
 
   it("pre-warms with math enabled", async () => {
     clearCache();
-    await warmup({ allowMath: true });
+    warmup({ allowMath: true });
     const html = await render("$x^2$", { allowMath: true });
     assertStringIncludes(html, "<math");
   });
@@ -1151,16 +1137,13 @@ That's all folks.
 `;
 
   it("HTML output matches render() for same input", async () => {
-    const opts = { highlighter: "lowlight" as const };
-    const renderHtml = await render(testDoc, opts);
-    const { html: metaHtml } = await renderWithMeta(testDoc, opts);
+    const renderHtml = await renderLowlight(testDoc);
+    const { html: metaHtml } = await renderWithMetaLowlight(testDoc);
     assertEquals(metaHtml, renderHtml);
   });
 
   it("TOC matches extractToc() results", async () => {
-    const { toc: metaToc } = await renderWithMeta(testDoc, {
-      highlighter: "lowlight",
-    });
+    const { toc: metaToc } = await renderWithMetaLowlight(testDoc);
     const standaloneToc = extractToc(testDoc);
 
     assertEquals(metaToc.length, standaloneToc.length);
@@ -1172,25 +1155,19 @@ That's all folks.
   });
 
   it("frontmatter matches parseFrontmatter() results", async () => {
-    const { frontmatter: metaFm } = await renderWithMeta(testDoc, {
-      highlighter: "lowlight",
-    });
+    const { frontmatter: metaFm } = await renderWithMetaLowlight(testDoc);
     const standaloneFm = parseFrontmatter(testDoc);
 
     assertEquals(metaFm, standaloneFm);
   });
 
   it("returns empty TOC for doc without headings", async () => {
-    const { toc } = await renderWithMeta("Just a paragraph.", {
-      highlighter: "lowlight",
-    });
+    const { toc } = await renderWithMetaLowlight("Just a paragraph.");
     assertEquals(toc, []);
   });
 
   it("returns null frontmatter when none exists", async () => {
-    const { frontmatter } = await renderWithMeta("# No frontmatter", {
-      highlighter: "lowlight",
-    });
+    const { frontmatter } = await renderWithMetaLowlight("# No frontmatter");
     assertEquals(frontmatter, null);
   });
 });
@@ -1586,7 +1563,6 @@ describe("lineNumbers", () => {
   it("handles code with no language (no syntax highlighting)", async () => {
     const html = await render("```\nplain text\nline 2\n```", {
       lineNumbers: true,
-      highlighter: "none",
     });
     assertStringIncludes(html, '<span class="line">');
     const lineCount = (html.match(/class="line"/g) || []).length;
@@ -1594,10 +1570,12 @@ describe("lineNumbers", () => {
   });
 
   it("works with lowlight highlighter", async () => {
-    const html = await render("```js\nconst x = 1;\nconst y = 2;\n```", {
-      lineNumbers: true,
-      highlighter: "lowlight",
-    });
+    const html = await renderLowlight(
+      "```js\nconst x = 1;\nconst y = 2;\n```",
+      {
+        lineNumbers: true,
+      },
+    );
     assertStringIncludes(html, '<span class="line">');
     assertStringIncludes(html, "data-line-numbers");
     const lineCount = (html.match(/class="line"/g) || []).length;
@@ -1605,12 +1583,12 @@ describe("lineNumbers", () => {
   });
 
   it("preserves syntax highlighting spans inside lines", async () => {
-    const html = await render("```ts\nconst x = 1;\n```", {
+    const html = await renderLowlight("```ts\nconst x = 1;\n```", {
       lineNumbers: true,
     });
     // Should still have syntax tokens inside the line span
-    assertStringIncludes(html, 'class="pl-k"');
-    assertStringIncludes(html, 'class="pl-c1"');
+    assertStringIncludes(html, 'class="hljs-keyword"');
+    assertStringIncludes(html, 'class="hljs-number"');
   });
 
   it("handles multi-line code with many lines", async () => {

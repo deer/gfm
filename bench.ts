@@ -4,7 +4,16 @@
  * Run with: deno bench --allow-read --allow-env
  */
 
-import { render, renderWithMeta, warmup } from "./mod.ts";
+import { render, warmup } from "./mod.ts";
+import {
+  render as renderLowlight,
+  renderWithMeta as renderWithMetaLowlight,
+  warmup as warmupLowlight,
+} from "./lowlight.ts";
+import {
+  render as renderStarryNight,
+  warmup as warmupStarryNight,
+} from "./starry-night.ts";
 
 // =============================================================================
 // Test Documents
@@ -141,9 +150,9 @@ const codeHeavyDoc = generateCodeHeavyDoc();
 // =============================================================================
 
 // Warm up all highlighters before benchmarks run
-await warmup({ highlighter: "starry-night" });
-await warmup({ highlighter: "lowlight" });
-await warmup({ highlighter: "none" });
+await warmupStarryNight();
+warmupLowlight();
+warmup();
 
 // =============================================================================
 // Small Document Benchmarks
@@ -153,7 +162,7 @@ Deno.bench({
   name: "starry-night",
   group: "small",
   fn: async () => {
-    await render(smallDoc, { highlighter: "starry-night" });
+    await renderStarryNight(smallDoc);
   },
 });
 
@@ -162,7 +171,7 @@ Deno.bench({
   group: "small",
   baseline: true,
   fn: async () => {
-    await render(smallDoc, { highlighter: "lowlight" });
+    await renderLowlight(smallDoc);
   },
 });
 
@@ -170,7 +179,7 @@ Deno.bench({
   name: "none",
   group: "small",
   fn: async () => {
-    await render(smallDoc, { highlighter: "none" });
+    await render(smallDoc);
   },
 });
 
@@ -182,7 +191,7 @@ Deno.bench({
   name: "starry-night",
   group: "medium",
   fn: async () => {
-    await render(mediumDoc, { highlighter: "starry-night" });
+    await renderStarryNight(mediumDoc);
   },
 });
 
@@ -191,7 +200,7 @@ Deno.bench({
   group: "medium",
   baseline: true,
   fn: async () => {
-    await render(mediumDoc, { highlighter: "lowlight" });
+    await renderLowlight(mediumDoc);
   },
 });
 
@@ -199,7 +208,7 @@ Deno.bench({
   name: "none",
   group: "medium",
   fn: async () => {
-    await render(mediumDoc, { highlighter: "none" });
+    await render(mediumDoc);
   },
 });
 
@@ -211,7 +220,7 @@ Deno.bench({
   name: "starry-night",
   group: "large",
   fn: async () => {
-    await render(largeDoc, { highlighter: "starry-night" });
+    await renderStarryNight(largeDoc);
   },
 });
 
@@ -220,7 +229,7 @@ Deno.bench({
   group: "large",
   baseline: true,
   fn: async () => {
-    await render(largeDoc, { highlighter: "lowlight" });
+    await renderLowlight(largeDoc);
   },
 });
 
@@ -228,7 +237,7 @@ Deno.bench({
   name: "none",
   group: "large",
   fn: async () => {
-    await render(largeDoc, { highlighter: "none" });
+    await render(largeDoc);
   },
 });
 
@@ -240,7 +249,7 @@ Deno.bench({
   name: "starry-night",
   group: "code-heavy",
   fn: async () => {
-    await render(codeHeavyDoc, { highlighter: "starry-night" });
+    await renderStarryNight(codeHeavyDoc);
   },
 });
 
@@ -249,7 +258,7 @@ Deno.bench({
   group: "code-heavy",
   baseline: true,
   fn: async () => {
-    await render(codeHeavyDoc, { highlighter: "lowlight" });
+    await renderLowlight(codeHeavyDoc);
   },
 });
 
@@ -257,7 +266,7 @@ Deno.bench({
   name: "none",
   group: "code-heavy",
   fn: async () => {
-    await render(codeHeavyDoc, { highlighter: "none" });
+    await render(codeHeavyDoc);
   },
 });
 
@@ -294,7 +303,7 @@ Deno.bench({
   group: "render-vs-meta",
   baseline: true,
   fn: async () => {
-    await render(metaDoc, { highlighter: "lowlight" });
+    await renderLowlight(metaDoc);
   },
 });
 
@@ -302,6 +311,6 @@ Deno.bench({
   name: "renderWithMeta",
   group: "render-vs-meta",
   fn: async () => {
-    await renderWithMeta(metaDoc, { highlighter: "lowlight" });
+    await renderWithMetaLowlight(metaDoc);
   },
 });
