@@ -22,6 +22,7 @@ import {
   warmup as warmupLowlight,
 } from "./lowlight.ts";
 import { render as renderStarryNight } from "./starry-night.ts";
+import { math } from "./math.ts";
 
 describe("render", () => {
   it("renders basic markdown", async () => {
@@ -83,7 +84,7 @@ describe("render", () => {
   });
 
   it("renders math when enabled", async () => {
-    const html = await render("$x^2$", { allowMath: true });
+    const html = await render("$x^2$", { math });
     assertStringIncludes(html, "<math");
   });
 });
@@ -1100,8 +1101,8 @@ describe("warmup", () => {
 
   it("pre-warms with math enabled", async () => {
     clearCache();
-    warmup({ allowMath: true });
-    const html = await render("$x^2$", { allowMath: true });
+    warmup({ math });
+    const html = await render("$x^2$", { math });
     assertStringIncludes(html, "<math");
   });
 });

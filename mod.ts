@@ -33,14 +33,12 @@ interface Pipeline {
 import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
 import remarkFrontmatter from "remark-frontmatter";
-import remarkMath from "remark-math";
 import { gemoji } from "gemoji";
 import remarkRehype from "remark-rehype";
 import rehypeSlug from "rehype-slug";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeStringify from "rehype-stringify";
-import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
 import { rehypeGithubAlerts } from "rehype-github-alerts";
 import { toString as hastToString } from "hast-util-to-string";
@@ -56,14 +54,30 @@ import type { Pluggable, Plugin } from "unified";
 /** A unified plugin with optional settings */
 export type PluginSpec = Pluggable | [Plugin, ...unknown[]];
 
+/** Math plugin configuration with sanitization rules */
+export interface MathPlugins {
+  /** Remark plugin for parsing math syntax (e.g. `remark-math`) */
+  remarkPlugin: PluginSpec;
+  /** Rehype plugin for rendering math to HTML (e.g. `rehype-katex`) */
+  rehypePlugin: PluginSpec;
+  /** Class prefixes to allow on `<span>` elements (e.g. `"katex"`, `"mord"`) */
+  spanClassPrefixes?: string[];
+  /** Additional attributes to allow on `<span>` (e.g. `"style"`, `"ariaHidden"`) */
+  spanAttributes?: string[];
+  /** Additional HTML/MathML tag names to allow */
+  tagNames?: string[];
+  /** Per-tag attributes to allow (e.g. `{ math: ["xmlns", "display"] }`) */
+  tagAttributes?: Record<string, string[]>;
+}
+
 /** Options for rendering markdown */
 export interface RenderOptions {
   /** Base URL for resolving relative links and images (e.g., "https://example.com/docs/") */
   baseUrl?: string;
   /** Rehype plugin for syntax highlighting. Use `@deer/gfm/lowlight` or `@deer/gfm/starry-night` entry points instead of setting this directly. */
   highlighter?: PluginSpec;
-  /** Enable KaTeX math rendering */
-  allowMath?: boolean;
+  /** Math rendering plugins (use `@deer/gfm/math` for KaTeX support) */
+  math?: MathPlugins;
   /** Enable iframes in output */
   allowIframes?: boolean;
   /** Disable HTML sanitization (dangerous!) */
@@ -138,41 +152,10 @@ function buildSchema(opts: RenderOptions) {
     /^language-./,
   ]];
 
-  // Build span className pattern - syntax highlighting + optionally KaTeX
+  // Build span className pattern - syntax highlighting + optional math classes
   const spanClassPatterns = ["pl-", "hljs-", "code-lang", "line"];
-  if (opts.allowMath) {
-    // KaTeX class prefixes
-    spanClassPatterns.push(
-      "katex",
-      "mord",
-      "mbin",
-      "mrel",
-      "mopen",
-      "mclose",
-      "mpunct",
-      "minner",
-      "mop",
-      "mspace",
-      "msupsub",
-      "vlist",
-      "strut",
-      "pstrut",
-      "frac-line",
-      "sqrt",
-      "base",
-      "sizing",
-      "reset-size",
-      "size",
-      "mtight",
-      "mathnormal",
-      "mathit",
-      "mathbf",
-      "nulldelimiter",
-      "delimsizing",
-      "delimcenter",
-      "accent",
-      "stretchy",
-    );
+  if (opts.math?.spanClassPrefixes) {
+    spanClassPatterns.push(...opts.math.spanClassPrefixes);
   }
   const spanClassRegex = new RegExp(`^(${spanClassPatterns.join("|")})`);
   schema.attributes["span"] = [...(schema.attributes["span"] ?? []), [
@@ -180,9 +163,9 @@ function buildSchema(opts: RenderOptions) {
     spanClassRegex,
   ]];
 
-  // KaTeX also needs style and aria-hidden on spans
-  if (opts.allowMath) {
-    schema.attributes["span"].push("style", "ariaHidden");
+  // Math plugins may need extra span attributes (e.g. style, ariaHidden)
+  if (opts.math?.spanAttributes) {
+    schema.attributes["span"].push(...opts.math.spanAttributes);
   }
 
   schema.attributes["pre"] = [
@@ -225,30 +208,14 @@ function buildSchema(opts: RenderOptions) {
     schema.attributes["iframe"] = ["src", "width", "height", "frameBorder"];
   }
 
-  // Math (KaTeX)
-  if (opts.allowMath) {
-    const mathTags = [
-      "math",
-      "semantics",
-      "mrow",
-      "mi",
-      "mn",
-      "mo",
-      "msup",
-      "msub",
-      "mfrac",
-      "msqrt",
-      "mroot",
-      "mtext",
-      "mspace",
-      "mtable",
-      "mtr",
-      "mtd",
-      "annotation",
-    ];
-    schema.tagNames = [...(schema.tagNames ?? []), ...mathTags];
-    schema.attributes["math"] = ["xmlns", "display"];
-    schema.attributes["annotation"] = ["encoding"];
+  // Math tag names and attributes (provided by math plugin config)
+  if (opts.math?.tagNames) {
+    schema.tagNames = [...(schema.tagNames ?? []), ...opts.math.tagNames];
+  }
+  if (opts.math?.tagAttributes) {
+    for (const [tag, attrs] of Object.entries(opts.math.tagAttributes)) {
+      schema.attributes[tag] = [...(schema.attributes[tag] ?? []), ...attrs];
+    }
   }
 
   return schema;
@@ -620,8 +587,8 @@ function createProcessor(opts: RenderOptions): Pipeline {
     processor = processor.use(remarkEmojify);
   }
 
-  if (opts.allowMath) {
-    processor = processor.use(remarkMath);
+  if (opts.math) {
+    processor = applyPlugin(processor, opts.math.remarkPlugin);
   }
 
   // Custom remark plugins (before remark-rehype)
@@ -652,8 +619,8 @@ function createProcessor(opts: RenderOptions): Pipeline {
   }
 
   // Math rendering
-  if (opts.allowMath) {
-    processor = processor.use(rehypeKatex);
+  if (opts.math) {
+    processor = applyPlugin(processor, opts.math.rehypePlugin);
   }
 
   // Wrap code blocks in .highlight with optional language header
@@ -701,7 +668,7 @@ function getCacheKey(opts: RenderOptions): string | null {
   }
   return JSON.stringify({
     highlighter: getHighlighterName(opts.highlighter),
-    allowMath: opts.allowMath ?? false,
+    math: opts.math ? true : false,
     allowIframes: opts.allowIframes ?? false,
     disableHtmlSanitization: opts.disableHtmlSanitization ?? false,
     allowEmoji: opts.allowEmoji ?? true,
