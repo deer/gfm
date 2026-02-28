@@ -11,7 +11,7 @@ GitHub Flavored Markdown rendering for Deno, built on the
   - `lowlight` — highlight.js-based (faster, lighter)
 - **Table of contents** — Auto-extracted with slugified IDs
 - **YAML frontmatter** — Parsed and returned separately
-- **Math rendering** — KaTeX support for `$inline$` and `$$display$$` math
+- **Math rendering** — Optional KaTeX support via `@deer/gfm/math` subpath
 - **Anchor links** — GitHub-style heading links with SVG icons
 - **Line numbers** — Optional numbered lines on code blocks via CSS counters
 - **HTML sanitization** — Safe by default, blocks XSS vectors
@@ -62,7 +62,8 @@ const html = await render("# Hello **world**");
 const html = await render(code, { highlighter: "lowlight" });
 
 // With math support
-const html = await render("$E = mc^2$", { allowMath: true });
+import { math } from "@deer/gfm/math";
+const html = await render("$E = mc^2$", { math });
 
 // Allow iframes (e.g. embedded videos)
 const html = await render(
@@ -190,7 +191,8 @@ await warmup(options?: RenderOptions): Promise<void>
 await warmup();
 
 // Or pre-warm a specific config
-await warmup({ highlighter: "lowlight", allowMath: true });
+import { math } from "@deer/gfm/math";
+await warmup({ math });
 ```
 
 ### `clearCache()`
@@ -206,18 +208,18 @@ clearCache(): void
 
 ### `RenderOptions`
 
-| Option                    | Type                                         | Default          | Description                             |
-| ------------------------- | -------------------------------------------- | ---------------- | --------------------------------------- |
-| `highlighter`             | `"starry-night"` \| `"lowlight"` \| `"none"` | `"starry-night"` | Syntax highlighter                      |
-| `allowMath`               | `boolean`                                    | `false`          | Enable KaTeX math rendering             |
-| `allowEmoji`              | `boolean`                                    | `true`           | Enable emoji shortcodes (`:wave:` → 👋) |
-| `allowIframes`            | `boolean`                                    | `false`          | Allow iframes in output                 |
-| `baseUrl`                 | `string`                                     | —                | Base URL for relative links             |
-| `remarkPlugins`           | `PluginSpec[]`                               | —                | Custom remark plugins                   |
-| `rehypePlugins`           | `PluginSpec[]`                               | —                | Custom rehype plugins                   |
-| `lineNumbers`             | `boolean`                                    | `false`          | Show line numbers on code blocks        |
-| `inline`                  | `boolean`                                    | `false`          | Strip `<p>` wrapping for inline use     |
-| `disableHtmlSanitization` | `boolean`                                    | `false`          | Disable sanitization (dangerous!)       |
+| Option                    | Type           | Default | Description                                  |
+| ------------------------- | -------------- | ------- | -------------------------------------------- |
+| `highlighter`             | `PluginSpec`   | —       | Syntax highlighter (via subpath imports)     |
+| `math`                    | `MathPlugins`  | —       | KaTeX math rendering (from `@deer/gfm/math`) |
+| `allowEmoji`              | `boolean`      | `true`  | Enable emoji shortcodes (`:wave:` → 👋)      |
+| `allowIframes`            | `boolean`      | `false` | Allow iframes in output                      |
+| `baseUrl`                 | `string`       | —       | Base URL for relative links                  |
+| `remarkPlugins`           | `PluginSpec[]` | —       | Custom remark plugins                        |
+| `rehypePlugins`           | `PluginSpec[]` | —       | Custom rehype plugins                        |
+| `lineNumbers`             | `boolean`      | `false` | Show line numbers on code blocks             |
+| `inline`                  | `boolean`      | `false` | Strip `<p>` wrapping for inline use          |
+| `disableHtmlSanitization` | `boolean`      | `false` | Disable sanitization (dangerous!)            |
 
 ### Highlighter Comparison
 
@@ -273,7 +275,7 @@ const html = await render(markdown, {
 3. `remark-frontmatter` (YAML frontmatter)
 4. Frontmatter extraction (stores on `vfile.data` for `renderWithMeta`)
 5. `gemoji` (if enabled)
-6. `remark-math` (if enabled)
+6. `remark-math` (if `math` provided)
 7. **Your `remarkPlugins`** ← custom
 8. `remark-rehype` (mdast → hast)
 9. `rehype-slug` (heading IDs)
@@ -281,7 +283,7 @@ const html = await render(markdown, {
 11. `rehype-autolink-headings` (anchor links)
 12. URL resolution (if `baseUrl` set)
 13. Syntax highlighting
-14. `rehype-katex` (if enabled)
+14. `rehype-katex` (if `math` provided)
 15. **Your `rehypePlugins`** ← custom
 16. `rehype-sanitize` (if enabled)
 17. `rehype-stringify` (hast → html)
@@ -427,9 +429,14 @@ console.log(greeting);
 
 ## Math Rendering
 
-Enable with `allowMath: true`:
+Import the `math` config from `@deer/gfm/math` to enable KaTeX rendering. This
+is a separate subpath import so that KaTeX (~500 KB) is only bundled when you
+actually need it:
 
 ```ts
+import { render } from "@deer/gfm/lowlight";
+import { math } from "@deer/gfm/math";
+
 const html = await render(
   `
 Inline math: $E = mc^2$
@@ -439,7 +446,7 @@ $$
 \\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}
 $$
 `,
-  { allowMath: true },
+  { math },
 );
 ```
 
@@ -483,7 +490,8 @@ import {
 } from "@deer/gfm";
 
 import type {
-  Highlighter,
+  MathPlugins,
+  PluginSpec,
   RenderOptions,
   RenderResult,
   TocEntry,

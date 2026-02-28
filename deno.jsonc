@@ -6,6 +6,7 @@
     ".": "./mod.ts",
     "./parse": "./parse.ts",
     "./lowlight": "./lowlight.ts",
+    "./math": "./math.ts",
     "./starry-night": "./starry-night.ts",
     "./style": "./style.ts"
   },

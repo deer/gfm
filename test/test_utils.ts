@@ -1,5 +1,6 @@
 import { launch, type Page } from "@astral/astral";
 import { render, type RenderOptions } from "../lowlight.ts";
+import { math } from "../math.ts";
 import { COMBINED_CSS } from "../style.ts";
 
 type TestCase = {
@@ -48,7 +49,7 @@ export const testCases: Record<TestCases, TestCase> = {
   },
   math: {
     markdown: Deno.readTextFileSync("./test/fixtures/math.md"),
-    renderOptions: { allowMath: true },
+    renderOptions: { math },
   },
   theme: {
     markdown: Deno.readTextFileSync("./test/fixtures/theme.md"),
