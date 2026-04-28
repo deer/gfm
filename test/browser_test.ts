@@ -177,6 +177,30 @@ describe("browser tests", () => {
     });
   });
 
+  it("renders code block inside <details>", async () => {
+    await browserTest("details", async (page) => {
+      const detailsEls = await page.$$("details");
+      assertEquals(detailsEls.length, 2);
+
+      const summaries = await page.$$("details summary");
+      assertEquals(summaries.length, 2);
+
+      // Code block must be inside the first <details>, not a sibling
+      const codeInsideDetails = await page.evaluate(() => {
+        const pre = document.querySelector("details pre");
+        return pre !== null;
+      });
+      assertEquals(codeInsideDetails, true);
+
+      // Paragraph content inside second <details>
+      const boldInsideDetails = await page.evaluate(() => {
+        const strong = document.querySelector("details strong");
+        return strong?.textContent ?? null;
+      });
+      assertEquals(boldInsideDetails, "bold");
+    });
+  });
+
   it("renders code blocks with headers and wrappers", async () => {
     await browserTest("codeblocks", async (page) => {
       // Page uses our generated CSS for code block styling

@@ -20,7 +20,8 @@ export type TestCases =
   | "alerts"
   | "inline"
   | "inline-block"
-  | "line-numbers";
+  | "line-numbers"
+  | "details";
 
 /** Custom theme overrides for the theme demo page — intentionally loud. */
 const THEME_OVERRIDES = `
@@ -71,6 +72,9 @@ export const testCases: Record<TestCases, TestCase> = {
   "line-numbers": {
     markdown: Deno.readTextFileSync("./test/fixtures/line-numbers.md"),
     renderOptions: { lineNumbers: true },
+  },
+  details: {
+    markdown: Deno.readTextFileSync("./test/fixtures/details.md"),
   },
 };
 
