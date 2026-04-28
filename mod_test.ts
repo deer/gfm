@@ -1532,6 +1532,38 @@ describe("plugin error handling", () => {
   });
 });
 
+describe("html containers with markdown inside", () => {
+  it("renders code block inside <details>", async () => {
+    const md = `<details>
+<summary>Show code</summary>
+
+\`\`\`json
+{"key": "value"}
+\`\`\`
+
+</details>`;
+    const html = await render(md);
+    assertStringIncludes(html, "<details>");
+    assertStringIncludes(html, "<summary>Show code</summary>");
+    assertStringIncludes(html, "<pre>");
+    assertStringIncludes(html, "value");
+    assertStringIncludes(html, "</details>");
+  });
+
+  it("renders paragraph inside <details>", async () => {
+    const md = `<details>
+<summary>More info</summary>
+
+Some **bold** content.
+
+</details>`;
+    const html = await render(md);
+    assertStringIncludes(html, "<details>");
+    assertStringIncludes(html, "<strong>bold</strong>");
+    assertStringIncludes(html, "</details>");
+  });
+});
+
 describe("lineNumbers", () => {
   it("wraps each line in span.line when enabled", async () => {
     const html = await render("```ts\nconst x = 1;\nconst y = 2;\n```", {

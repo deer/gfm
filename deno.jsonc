@@ -1,6 +1,6 @@
 {
   "name": "@deer/gfm",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "license": "MIT",
   "exports": {
     ".": "./mod.ts",
@@ -33,6 +33,8 @@
     "hast-util-heading-rank": "npm:hast-util-heading-rank@^3",
     "unist-util-visit": "npm:unist-util-visit@^5.1.0",
     "mdast-util-to-string": "npm:mdast-util-to-string@^4",
+    "mdast-util-to-hast": "npm:mdast-util-to-hast@^13",
+    "hast-util-to-html": "npm:hast-util-to-html@^9",
     "github-slugger": "npm:github-slugger@^2",
     "@std/yaml": "jsr:@std/yaml@^1.0.11",
     "mdast": "npm:@types/mdast@^4.0.4",

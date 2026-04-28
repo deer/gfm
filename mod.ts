@@ -45,9 +45,11 @@ import { toString as hastToString } from "hast-util-to-string";
 import { headingRank } from "hast-util-heading-rank";
 import { SKIP, visit } from "unist-util-visit";
 import { parse as parseYaml } from "@std/yaml";
+import { toHast } from "mdast-util-to-hast";
+import { toHtml } from "hast-util-to-html";
 
 import type { TocEntry } from "./parse.ts";
-import type { Root as MdastRoot } from "mdast";
+import type { Root as MdastRoot, RootContent } from "mdast";
 import type { Element, Root as HastRoot } from "hast";
 import type { Pluggable, Plugin } from "unified";
 
@@ -80,6 +82,8 @@ export interface RenderOptions {
   math?: MathPlugins;
   /** Enable iframes in output */
   allowIframes?: boolean;
+  /** Enable audio/video elements in output */
+  allowMedia?: boolean;
   /** Disable HTML sanitization (dangerous!) */
   disableHtmlSanitization?: boolean;
   /** Enable emoji shortcodes (e.g., :wave: → 👋). Default: true */
@@ -482,6 +486,52 @@ function rehypeUnwrapParagraphs() {
   };
 }
 
+const CONTAINER_TAG_RE = /^<(details|figure|section|aside|dialog)\b/i;
+
+/**
+ * Remark plugin that merges HTML container tags (e.g. <details>) with the
+ * markdown nodes between them into a single raw HTML block. This is necessary
+ * because remark splits HTML blocks at blank lines, which means <details> and
+ * </details> end up as separate nodes and rehype-raw can't nest them correctly.
+ */
+function remarkHtmlContainers() {
+  return (tree: MdastRoot) => {
+    mergeContainers(tree.children);
+  };
+
+  function mergeContainers(children: RootContent[]) {
+    let i = 0;
+    while (i < children.length) {
+      const node = children[i];
+      if (node.type === "html") {
+        const match = node.value.match(CONTAINER_TAG_RE);
+        if (match) {
+          const tagName = match[1].toLowerCase();
+          const closePattern = new RegExp(`^</${tagName}>\\s*$`, "i");
+          let j = i + 1;
+          while (j < children.length) {
+            const c = children[j];
+            if (c.type === "html" && closePattern.test(c.value.trim())) break;
+            j++;
+          }
+          if (j < children.length) {
+            const innerNodes = children.slice(i + 1, j);
+            const innerHast = toHast({ type: "root", children: innerNodes });
+            const innerHtml = toHtml(innerHast as HastRoot);
+            const closeNode = children[j] as { value: string };
+            const merged: RootContent = {
+              type: "html",
+              value: node.value + "\n" + innerHtml + "\n" + closeNode.value,
+            };
+            children.splice(i, j - i + 1, merged);
+          }
+        }
+      }
+      i++;
+    }
+  }
+}
+
 /**
  * Remark plugin that extracts YAML frontmatter and stores it on vfile.data.
  */
@@ -581,6 +631,8 @@ function createProcessor(opts: RenderOptions): Pipeline {
     .use(remarkGfm)
     .use(remarkFrontmatter, ["yaml"])
     .use(remarkExtractFrontmatter);
+
+  processor = processor.use(remarkHtmlContainers);
 
   // Emoji shortcodes (enabled by default)
   if (opts.allowEmoji !== false) {
