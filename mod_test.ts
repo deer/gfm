@@ -683,6 +683,48 @@ describe("GitHub alerts", () => {
   });
 });
 
+describe("allowMedia", () => {
+  it("strips audio by default", async () => {
+    const html = await render('<audio controls src="track.mp3"></audio>');
+    assertEquals(html.includes("<audio"), false);
+  });
+
+  it("allows audio when enabled", async () => {
+    const html = await render('<audio controls src="track.mp3"></audio>', {
+      allowMedia: true,
+    });
+    assertStringIncludes(html, "<audio", "actual: " + html);
+    assertStringIncludes(html, 'src="track.mp3"');
+    assertStringIncludes(html, "controls");
+  });
+
+  it("allows video when enabled", async () => {
+    const html = await render('<video src="clip.mp4" controls></video>', {
+      allowMedia: true,
+    });
+    assertStringIncludes(html, "<video");
+    assertStringIncludes(html, 'src="clip.mp4"');
+  });
+});
+
+describe("details/summary", () => {
+  it("allows details and summary by default", async () => {
+    const html = await render(
+      "<details><summary>Title</summary>Body</details>",
+    );
+    assertStringIncludes(html, "<details>");
+    assertStringIncludes(html, "<summary>Title</summary>");
+  });
+
+  it("allows details open attribute", async () => {
+    const html = await render(
+      "<details open><summary>Title</summary>Body</details>",
+    );
+    assertStringIncludes(html, "<details");
+    assertStringIncludes(html, "open");
+  });
+});
+
 describe("allowIframes", () => {
   it("strips iframes by default", async () => {
     const html = await render('<iframe src="https://example.com"></iframe>');
