@@ -212,6 +212,35 @@ function buildSchema(opts: RenderOptions) {
     schema.attributes["iframe"] = ["src", "width", "height", "frameBorder"];
   }
 
+  // audio/video
+  if (opts.allowMedia) {
+    schema.tagNames = [...(schema.tagNames ?? []), "audio", "video", "source"];
+    schema.attributes["audio"] = [
+      "src",
+      "controls",
+      "preload",
+      "autoPlay",
+      "loop",
+      "muted",
+    ];
+    schema.attributes["video"] = [
+      "src",
+      "controls",
+      "preload",
+      "autoPlay",
+      "loop",
+      "muted",
+      "width",
+      "height",
+      "poster",
+    ];
+    schema.attributes["source"] = ["src", "type"];
+  }
+
+  // details/summary are always allowed (no XSS risk)
+  schema.tagNames = [...(schema.tagNames ?? []), "details", "summary"];
+  schema.attributes["details"] = ["open"];
+
   // Math tag names and attributes (provided by math plugin config)
   if (opts.math?.tagNames) {
     schema.tagNames = [...(schema.tagNames ?? []), ...opts.math.tagNames];
@@ -722,6 +751,7 @@ function getCacheKey(opts: RenderOptions): string | null {
     highlighter: getHighlighterName(opts.highlighter),
     math: opts.math ? true : false,
     allowIframes: opts.allowIframes ?? false,
+    allowMedia: opts.allowMedia ?? false,
     disableHtmlSanitization: opts.disableHtmlSanitization ?? false,
     allowEmoji: opts.allowEmoji ?? true,
     baseUrl: opts.baseUrl ?? null,
